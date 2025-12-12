@@ -1,3 +1,37 @@
+## 2025-12-12 –  Day Two
+### **Summary**
+
+...
+
+### **Decisions**
+
+* ...
+
+### **Added**
+
+* ...
+
+### **Changed**
+
+* ...
+
+### **Removed**
+
+* ...
+
+### **Learnings**
+
+* ...
+
+### **Next steps**
+
+* ...
+
+### **Notes**
+
+* ...
+
+
 ## 2025-11-12 –  Initial setup
 ### **Summary**
 
