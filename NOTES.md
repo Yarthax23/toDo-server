@@ -1,69 +1,122 @@
-GitHub no es un "museo de proyectos terminados".
-Es un historial de tu proceso.
+## 0. Filosofía
 
-
-Ideas:
-* implementar salas
-* pensar un pequeño protocolo
-* mini-juegos: tirar dado/s, número secreto
-* después migrar a Go
-
-Cosas para investigar:
-* Convención de Commits. https://www.conventionalcommits.org/es/v1.0.0-beta.3 ; https://github.com/KarmaPulse/git-commit-message-conventions ; https://gist.github.com/qoomon/5dfcdf8eec66a051ecd85625518cfd13 
-
-Dudas: 
-* revisar qué modelo de sincronización usar
-    * opc A: select()
-    * opc B: threads + mutex <duda : es lo mismo que fork() ? -> wait(), signal vs sigaction>
-    * opc C (avanzada): epoll (Linux)
-
-Futuros features:
-
-Links:
-
-Notas personales:
+> GitHub no es un “museo de proyectos terminados”, es el historial de tu proceso.
 
 ---
 
+## 1. Ideas de funcionalidades
 
+* Implementar salas
+* Pensar un pequeño protocolo
+* Mini-juegos:
 
-[] Proyecto 1: Chat TCP simple en C
+  * tirar dado/s
+  * número secreto
+  * consumidor/productor (lavarropas)
+  * simular una pequeña sociedad
+* Futuro: migrar a Go
 
-*Fase A Base técnica en C (2-6 semanas)*
-1. Chat TCP simple en C
-    * sockets
-        * socket(), bind(), listen(), accept(), connect(), recv()/send()
-    * cliente/servidor
-    * enviar/recibir texto
-    * seguridad mínima (validación de input básica)
-    * manejo de varios clientes con select/poll o threads
-2. Agregar salas + interacción
-    * sincronización (mutex, select, poll, epoll)
-    * manejo de estructuras de datos
-        * typedef struct {
+---
+
+## 2. Cosas para investigar
+
+* Convención de commits (https://www.conventionalcommits.org/es/v1.0.0-beta.3 ; https://github.com/KarmaPulse/git-commit-message-conventions ; https://gist.github.com/qoomon/5dfcdf8eec66a051ecd85625518cfd13)
+* Frameworks de testing en C (CUnit, Unity, Criterion)
+* Explotación / seguridad básica
+* Concurrencia: varios clientes leyendo/escribiendo simultáneamente
+* “Graceful client disconnects”
+
+  * cómo detectar desconexión normal (`recv() == 0`)
+  * desconexión abrupta (`recv() < 0`, errno=ECONNRESET)
+  * remover del array/lista (reajustes/liberar mem)
+  * cerrar socket
+  * informar al resto (opcional) [server] user Juan disconnected
+  * no dejar FD inválidos en `select()`
+
+---
+
+## 3. Arquitectura futura
+
+(“Detailed architecture diagrams will live in /docs/” se refiere a esta sección)
+
+### 3.1 Diagramas a crear
+
+* **Flujo cliente-servidor**
+* **Diagrama de componentes**
+
+  * server.c
+  * gestor de clientes
+  * gestor de salas
+  * dispatcher de mensajes
+  * parser del protocolo
+* **Secuencias**
+
+  * cómo se procesa `/join`
+* **Especificación del protocolo**
+
+  * formato de mensaje
+  * comandos
+  * errores
+  * estados
+* **Decisiones técnicas**
+
+  * por qué `select()` y no threads
+  * cómo se gestiona memoria
+  * política de buffers
+
+---
+
+## 4. Dudas
+
+* ¿Qué modelo de sincronización usar?
+
+  * A: `select()`
+  * B: threads + mutex
+
+    * ¿relación con `fork()`?
+    * señales vs `pthread_*`
+  * C: epoll (Linux)
+* Zonas críticas para acceso concurrente
+
+---
+
+## 5. Roadmap
+
+### **Fase A — Base técnica en C**
+
+#### 1. Chat TCP simple
+
+* socket(), bind(), listen(), accept(), connect(), recv(), send()
+* soporte para múltiples clientes
+* `select()` o threads
+* seguridad mínima (validación de input básica, whitelist)
+
+#### 2. Salas + comandos
+
+* sincronización
+* estructuras de datos (`Client`, lista dinámica, diccionario de salas)
+    * typedef struct {
             int socket;
             char username[32];
             int room_id;
         } Client
-        * lista dinámica de clientes
-        * diccionario de salas (hash map simple o array)
-    * protocolito simple de mensajes
-3. Mini-juegos dentro del chat
-    * adivinar número
-    * tirar dados
-    * decisiones compartidas
-    * empezar a pensar "comandos" dentro del chat > if (buffer[0] == '/')
-        * /roll
-        * /guess 1-10
-        * /vote start
+* comandos (`/join`, `/rooms`, etc.)
 
-*FASE B Migración a Go (cuando ya fluya C)*  
-4. Migrar la lógica principal a Go  
-5. Convertirlo en API Rest simple
-    * Qué es una API ? Qué es hacer APIs en Go? Qué es una API Rest?  
-6. Dockerizar
-    * Qué es dockerizar? -> meter programa en contenedor aislado (arrancar viendo tema de contenedores de Sistemas Operativos y su taller)  
-7. Agregar auth básica  
-8. Tests  
-9. Documentación sólida  
-10. Más adelante: UI en React (Fase C)
+#### 3. Mini-juegos
+
+* /roll     (tirar dado)
+* /guess    (adivinar número)
+* /vote     (decisiones compartidas)
+* parser de comandos > if (buffer[0] == '/' )
+
+---
+
+### **Fase B — Migración a Go**
+
+4. Migrar lógica principal
+5. Convertir en API REST
+6. Dockerizar (arrancar viendo tema de contenedores de Sistemas Operativos y su taller)
+7. Agregar auth básica
+8. Tests
+9. Documentación sólida
+10. UI en React (Fase C)
