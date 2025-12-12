@@ -1,19 +1,21 @@
-## 2025-12-12 –  Day Two
+## 2025-12-12 –  Initial server module setup
 ### **Summary**
 
-...
+Set up the initial server module with start_server(), integrated it in main.c, updated Makefile to simplify header includes, and documented decisions and configuration changes in PROJECT_LOG.
 
 ### **Decisions**
 
-* ...
+* Use snake_case instead of CamelCase (implemented via new macro).
 
 ### **Added**
 
-* ...
+* `server.h`, `server.c`.
+* `keybindings.json` to make Shift+Space type underscore `_` in VS Code (Multi Command).
+* `'I./src` CFLAG to make `#include` simple & concise.
 
 ### **Changed**
 
-* ...
+* `settings.json` to define macro for inserting `_`.
 
 ### **Removed**
 
@@ -21,15 +23,23 @@
 
 ### **Learnings**
 
-* ...
+* Reviewed Sockets documentation, boilerplate & notes.
+* Reviewed how often to commit
+* Discovered `xev` command: a debugging & development tool to print X events.
+* Keybindings in VS Code can override system keys if the command does not exist.
 
 ### **Next steps**
 
-* ...
+* [ ] Continue implementing server features in server.c / server.h.
+* [ ] Decide whether to use select() or threads + mutex for concurrency.
+* [ ] Explore select() for handling multiple clients concurrently.
+* [ ] Implement basic client handling using select().
+* [ ] Research sigaction() for proper signal handling in fork() (if needed in future).
+* [ ] Begin implementing broadcast_message() function.
 
 ### **Notes**
 
-* ...
+* System-wide Shift+Space remapping on Linux is tricky with XKB; AutoKey is a safer alternative if needed.
 
 
 ## 2025-11-12 –  Initial setup
