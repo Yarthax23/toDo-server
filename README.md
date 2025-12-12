@@ -49,7 +49,9 @@ Simple line-base protocol
 ├── docs/
 │   └── standards.md        # Internal conventions & templates
 ├── src/
-│   └── app.c               # Application logic (core implementation)
+│   ├── app.c               # Application logic (core implementation)
+│   ├── server.c            # Server Logic (core implementation).
+│   └── server.h            # Prototypes and public structures.
 ├── test/
 ├── NOTES.md                # Personal notes, sketches, ideas
 ├── PROJECT_LOG.md          # Daily progress log
