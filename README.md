@@ -1,36 +1,37 @@
-# Chat TCP en C
-Proyecto personal para aprender sockets, sincronización y bases de programación de sistemas.
+# TCP Chat in C
+Personal project to learn sockets, synchronization, and systems programming fundamentals.
 
-## Descripción
-Un chat compartido en un servidor donde cada cliente puede mandar cualquier mensaje, debe recibir el mensaje de otros clientes y el servidor debe soportar un máximo de clientes al mismo tiempo. Los clientes se pueden conectar y desconectar cuando quieran.
+## Description
+A multi-client chat server where each connected client can send messages, receive messages from others, and join or leave freely.
+The server must support multiple clients concurrently and broadcast messages to all participants.
 
-## Protocolo (resumen)
-- Mensajes de texto terminados en '\n'
-- Comando /salas para listar salas
-- Comando /join <sala> para unirse
+## Protocol (summary)
+- Text messages terminated with `'\n'`
+- `/rooms` command to list available rooms
+- `/join <room>` to join a room
 
-## Cómo compilar
+## How to build
 make all
 
-## Cómo ejecutar
+## How to run
 make run
 
-## Estructura del Proyecto
+## Project Structure
 ```
 ├── app/
-│   └── main.c              # Punto de entrada de la aplicación
+│   └── main.c              # Application entry point
 ├── docs/
-│   └── standards.md        # Referencias, templates
+│   └── standards.md        # Internal conventions, templates
 ├── src/
-│   └── app.c               # Aplicación interactiva (completo)
+│   └── app.c               # Interactive application logic
 ├── test/
-├── NOTES.md                # Diario personal, borrador
-├── PROJECT_LOG.md          #
-├── README.md               # Este archivo
-├── Makefile                # Automatización de tareas
+├── NOTES.md                # Personal notes, scratchpad
+├── PROJECT_LOG.md          # Daily progress log
+├── README.md               # This file
+├── Makefile                # Build automation
 └── .gitignore             
 ```
 
 
 ## Estado
-Dia 1: creación del repositorio. Proyecto en planificación.
+Dia 1: repository created. Project currently in planning phase.
