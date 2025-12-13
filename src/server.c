@@ -1,14 +1,22 @@
 #include "server.h" //  start_server
+#include <unistd.h> //  unlink
 #include <stdio.h>  //  printf
 #include <stdlib.h> //  EXIT tags
 #include <sys/socket.h> // socket
 
 static int server_socket;
 static struct sockaddr_un server_addr;
-static int client_socket;              // Not scalable
-static struct sockaddr_un client_addr; // Not scalable
-unsigned int slen = sizeof(server_addr);
-unsigned int clen = sizeof(client_addr);
+// static int client_socket;              // Not scalable
+// static struct sockaddr_un client_addr; // Not scalable
+
+static Client clients[MAX_CLIENTS];
+void init_clients(void){
+    for(int i = 0; i < MAX_CLIENTS; i++){
+        clients[i].socket = -1;
+        clients[i].room_id = -1;
+        clients[i].username[0] = '\0';
+    }
+}
 
 void start_server(int port){
     // Testea buen import/call desde main
@@ -28,8 +36,7 @@ void start_server(int port){
         perror("socket");
         exit(EXIT_FAILURE);
     }
-
-    if (bind(server_socket, (struct sockaddr *) &server_addr, slen) == -1) {
+    if (bind(server_socket, (struct sockaddr *) &server_addr, sizeof(server_addr)) == -1) {
         perror("bind");
         exit(EXIT_FAILURE);
     }

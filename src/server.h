@@ -4,9 +4,19 @@
 #include <sys/un.h>
 
 #define MAX_CLIENTS 10
+#define USERNAME_MAX 32
+
+typedef struct {
+    int socket;                 // -1 means unused
+    int room_id;                // -1 if not in a room
+    char username[USERNAME_MAX];
+    struct sockaddr_un addr;
+} Client;
 
 // Public server functions
 void start_server(int port);
+void init_clients(void);
+
 void broadcast_message(const char *msg);
 
 
