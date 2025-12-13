@@ -1,3 +1,37 @@
+## 2025-13-12 –  Day Three
+### **Summary**
+
+...
+
+### **Decisions**
+
+* ...
+
+### **Added**
+
+* ...
+
+### **Changed**
+
+* ...
+
+### **Removed**
+
+* ...
+
+### **Learnings**
+
+* ...
+
+### **Next steps**
+
+* [ ] ...
+
+### **Notes**
+
+* ...
+
+
 ## 2025-12-12 –  Initial server module setup
 ### **Summary**
 
