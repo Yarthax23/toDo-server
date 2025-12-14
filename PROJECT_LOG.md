@@ -1,35 +1,96 @@
-## 2025-13-12 –  Day Three
+## 2025-12-13 –  Transition to Event-Driven Server Architecture
 ### **Summary**
 
-...
+Implemented a single‑process AF_UNIX stream server with safe static initialization. Introduced a fixed‑size client table and laid the groundwork for a `select()`‑based event loop. Replaced port‑based networking with filesystem socket paths.
 
 ### **Decisions**
 
-* ...
+* Use bounded string functions instead of unbounded copies.
+    * Avoid `strcpy`, `strcat`; prefer `snprintf`, `strn*` with explicit size checks.
+    * Note that `snprintf` silently truncates and requires return-value checking.
+
+* Adopt `select` for I/O multiplexing.
+    * Single‑threaded, event‑driven model.
+    * Chosen over `fork` and threads for clarity and teaching value.
+* Represent clients using a fixed‑size array (clients[MAX_CLIENTS]).
+    * Avoid dynamic allocation at this stage.
+* Do not store peer `sockaddr_un` in `Client`.
+    * AF_UNIX + `SOCK_STREAM` peer address is not useful post-`accept`.
+    * Server logic does not depend on client path identity.
+    * Eliminates unused state and simplifies the data model.
+* Document module-level design rules in `standards.md`.
 
 ### **Added**
 
-* ...
+* AF_UNIX server socket setup (`socket`, `bind`, `listen`, `unlink`).
+* Client table initialization logic.
+* Initial `select`‑based server architecture (single process, multiplexed I/O).
 
 ### **Changed**
 
-* ...
+* Replaced port-based addressing with filesystem socket paths.
+* Consolidated server responsabilites into `server.c`, `server.h`.
 
 ### **Removed**
 
-* ...
+* Storage of peer address (`sockaddr_un`) from the `Client` structure.
 
 ### **Learnings**
 
-* ...
+* Conventions and correctness for header files.
+* `memset(..., 0, ...)` establishes a safe baseline for structs passed to the kernel:
+    * Ensures `sun_path` is NULL-terminated.
+    * Clears unused bytes.
+    * Prevents leaking uninitialized data.
+* Previously introduced to a fork()-per-client server model.
+* Blocking I/O in child processes is simple but inefficient and awkward for shared state.
+* Switched to a single-process, event-driven model using select().
+* select() performs I/O multiplexing (not concurrency): the processs waits for any FD to become ready.
+    * One thread waits on many file descriptors.
+    * The process never blocks on the “wrong” operation.
+* Limitations of select() (FD limits, O(n) scanning) are acceptable at this scale and make it a good stepping stone toward epoll().
+* Comparison of models:
+    * select():
+        * FD limit (often 1024), O(n) scanning, fd_sets rebuilt every loop.
+        * Well‑suited for small servers and learning.
+    * epoll():
+        * No hard FD limit, kernel‑tracked readiness, O(1) event delivery.
+        * Better for large‑scale systems.
+* Stream sockets are byte streams:
+    * Message boundaries are not preserved.
+    * One recv() ≠ one message.
+* Current implementation assumes complete commands per `recv()`.
+    * Proper protocol framing will be introduced in a later milestone.
+    * Stream sockets are byte streams; protocol framing (delimiter-based) will be implemented in a future milestone.
+* First practical uses of `git reset --soft` and `git commit --amend`.
+
 
 ### **Next steps**
 
-* [ ] ...
+* [ ] Review blocking vs. non-blocking sockets behavior.
+* [ ] Define buffer sizing and message parsing strategy.
+* [ ] Continue studying I/O multiplexing and concurrency models.
+* [ ] Prepare for protocol framing (deilimer-based).
+* [ ] Explore `epoll` theory.
 
 ### **Notes**
 
-* ...
+* Struct layout is not a security boundary.
+    * Field order and padding do not prevent memory corruption.
+* Prefer break inside the main event loop to allow graceful shutdown:
+    * Close client sockets.
+    * Unlink the UNIX socket file.
+    * Leave the process in a clean state.
+* Use exit(EXIT_FAILURE) only outside controlled teardown paths.
+* A struct should reflect what the system actually uses, not speculative future needs.
+
+* Design decisions should be justified by correctness and clarity, not assumed defensive side effects.
+* Security & Memory Safety Philosophy.
+    * Strict bounds checking.
+    * Proper initialization of all data.
+    * Avoiding buffer overflows, especially on fixed-size arrays.
+    * Clearing memory before reuse when appropriate.
+    * Avoiding use-after-free and double-free errors.
 
 
 ## 2025-12-12 –  Initial server module setup
@@ -64,10 +125,10 @@ Set up the initial server module with start_server(), integrated it in main.c, u
 
 ### **Next steps**
 
-* [ ] Continue implementing server features in server.c / server.h.
-* [ ] Decide whether to use select() or threads + mutex for concurrency.
-* [ ] Explore select() for handling multiple clients concurrently.
-* [ ] Implement basic client handling using select().
+* [x] Continue implementing server features in server.c / server.h.
+* [x] Decide whether to use select() or threads + mutex for concurrency.
+* [x] Explore select() for handling multiple clients concurrently.
+* [x] Implement basic client handling using select().
 * [ ] Research sigaction() for proper signal handling in fork() (if needed in future).
 * [ ] Begin implementing broadcast_message() function.
 
@@ -76,7 +137,7 @@ Set up the initial server module with start_server(), integrated it in main.c, u
 * System-wide Shift+Space remapping on Linux is tricky with XKB; AutoKey is a safer alternative if needed.
 
 
-## 2025-11-12 –  Initial setup
+## 2025-12-11 –  Initial setup
 ### **Summary**
 
 Set up the initial repository structure and development workflow. Defined conventions, added build automation, and prepared the base layout for the upcoming TCP chat server.
@@ -115,9 +176,9 @@ Set up the initial repository structure and development workflow. Defined conven
 
 ### **Next steps**
 
-* Implement the minimal TCP server with `socket()`, `bind()`, `listen()`, `accept()`.
-* Decide between `select()` vs. threads + mutex for concurrency.
-* Write the first architecture sketches for `/docs/architecture.md`.
+* [x] Implement the minimal stream server with `socket()`, `bind()`, `listen()`, `accept()`.
+* [x] Decide between `select()` vs. threads + mutex for concurrency.
+* [x] Write the first architecture sketches for `/docs/architecture.md`.
 
 ### **Notes**
 
