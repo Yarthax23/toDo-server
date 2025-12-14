@@ -1,10 +1,10 @@
-#include "server.h"     //  start_server
-#include <unistd.h>     //  unlink
-#include <stdio.h>      //  printf
-#include <stdlib.h>     //  EXIT tags
-#include <string.h>     //  memset, strlen
+#include "server.h"     // start_server
+#include <stdio.h>      // printf
+#include <stdlib.h>     // EXIT tags
+#include <string.h>     // memset, strlen
 #include <sys/socket.h> // socket
 #include <sys/select.h> // fd_set (select)
+#include <sys/un.h>     // sockaddr_un
 
 static int server_socket;
 static struct sockaddr_un server_addr;
@@ -110,8 +110,10 @@ void start_server(const char *socket_path)
             int fd = clients[i].socket;
             if (fd != -1 && FD_ISSET(fd, &readfds))
             {
-                char buf[BUFFER_SIZE];
-                int n = recv(fd, buf, sizeof(buf), 0);
+                ssize_t n = recv(fd,
+                                 clients[i].inbuf + clients[i].inbuf_len,
+                                 INBUF_SIZE - clients[i].inbuf_len,
+                                 0);
                 if (n <= 0)
                 {
                     // client closed or error
@@ -120,8 +122,6 @@ void start_server(const char *socket_path)
                 else
                 {
                     // handle client
-                    buf[n] = '\0';
-                    printf("Client %d says: %s\n", i, buf);
                     // handle_message(fd, buf, n); // broadcast message?
                 }
             }
