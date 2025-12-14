@@ -6,13 +6,12 @@
 
 ## 1. Ideas de funcionalidades
 
-* Implementar salas
 * Diseñar un protocolo simple
+* Implementar salas
 * Mini-juegos:
   * tirar dado/s
   * número secreto
   * consumidor/productor (lavarropas)
-  * simular una pequeña sociedad
 * Futuro: 
   * modo /brainstorm actualiza ordenando chat (a decidir)
   * migrar a Go
@@ -26,6 +25,7 @@
 * Graceful client disconnects
 * Señales y manejo de procesos (`sigaction`: `signal` is deprecated)
 * `epoll` como alternativa escalable a `select`
+* Encontré un curso de Linux and Unix System Programming, https://man7.org/training/
 
 ---
 
