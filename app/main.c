@@ -2,6 +2,6 @@
 
 
 int main(){
-    start_server("unix_socket");
+    start_server("/tmp/unix_socket");
 
 }
