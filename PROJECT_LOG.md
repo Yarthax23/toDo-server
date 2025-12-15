@@ -1,3 +1,34 @@
+## 2025-12-15 –  Day Five
+### Summary
+
+...
+
+### Decisions
+
+* ...
+
+### Added
+
+* ...
+
+### Changed
+
+* ...
+
+### Learnings
+
+* ...
+
+### Next steps
+
+* [ ] ...
+
+
+### Notes
+
+* ...
+
+
 ## 2025-12-14 –  Line-Based Framing and Robustness Testing
 ### Summary
 
