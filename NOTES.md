@@ -1,100 +1,179 @@
-## 0. Filosofía
+## 0. Philosophy
 
-> GitHub no es un “museo de proyectos terminados”, es el historial de tu proceso.
+> GitHub is not a “museum of finished projects", it is the history of your process.
 
 ---
 
 ## 1. Ideas de funcionalidades
 
-* Diseñar un protocolo simple
-* Implementar salas
-* Mini-juegos:
-  * tirar dado/s
-  * número secreto
-  * consumidor/productor (lavarropas)
+* Design a simple protocol
+* Implement rooms
+* Mini-games / commands:
+  * /roll dice
+  * /guess secret number
+  * /vote shared decisions
+  * produced/consumer (e.g. washing machine simulation)
+  * change Client's Name, /nick <username>
+  * /brainstorm mode that updates and sorts chat ideas (TBD)
 * Futuro: 
-  * modo /brainstorm actualiza ordenando chat (a decidir)
-  * migrar a Go
+  * migrar to Go
 
 ---
 
-## 2. Cosas para investigar
+## 2. Things to Research
 
-* Frameworks de testing en C (CUnit, Unity, Criterion)
-* Seguridad básica / hardening
+* Testing frameworks in C (CUnit, Unity, Criterion)
+* Basic security / hardening
 * Graceful client disconnects
-* Señales y manejo de procesos (`sigaction`: `signal` is deprecated)
-* `epoll` como alternativa escalable a `select`
-* Encontré un curso de Linux and Unix System Programming, https://man7.org/training/
+* Signals and process handling (`sigaction`: `signal` is deprecated)
+* `epoll` as a scalable alternative to `select`
+* Linux and Unix System Programming course https://man7.org/training/
 
 ---
 
-## 3. Arquitectura futura
-Detailed and authoritative architecture diagrams live in /docs/architecture.md.
-This section tracks future diagram ideas only.
+## 3. Future Architecture Ideas (Non-binding)
+Detailed and authoritative architecture diagrams live in `/docs/architecture.md`. This section tracks future diagram ideas only.
+* ASCII diagrams are perfect for `architecture.md` v1
+  * Keep them conceptual
+  * Don’t try to be “pretty”
+  * One diagram per idea
+  * Later (much later), migrate to Mermaid or draw.io if desired.
 
-* ASCII diagrams are perfect for /docs/architecture.md v1 (many senior engineers do exactly that)
-    * Keep them conceptual
-    * Don’t try to be “pretty”
-    * One diagram per idea
-  * Later (much later), you can convert to Mermaid or draw.io if you want.
+### Pending Diagrams
+* Client-server flow
+* Component diagram:
+  * `server.c`
+  * client manager
+  * futuro: room manager
+  * futuro: message dispatcher
+  * futuro: protocol parser
 
-### Diagramas pendientes
-* Flujo cliente-servidor
-* Diagrama de componentes
-  * server.c
-  * gestor de clientes
-  * futuro: gestor de salas
-  * futuro: dispatcher de mensajes
-  * futuro: parser del protocolo
+### Formal Protocol Specification
+  * commands
+  * errors
+  * states
 
-* Especificación formal del protocolo
-  * formato de mensaje
-  * comandos
-  * errores
-  * estados
-* Decisiones técnicas futuras
-  * buffers
+### Decisiones técnicas futuras
   * non-blocking I/O
-  * escalabilidad
-  * If error responses are later added, server will need a distinction between:
-    * client-directed messages
-    * broadcast messages  
-  This is intentionally deferred to avoid protocol complexity during initial framing work.
+  * scalability
+
+                          ### Future protocol improvements
+
+                          * Server-to-client informational messages:
+                            * server full
+                            * client joined / left
+                          * Distinguish broadcast vs client-directed messages
+                            * This is intentionally deferred to avoid protocol complexity during initial framing work.
+                          * In network-facing servers:
+                            * log details server-side
+                            * send generic errors client-side
+                          * Semantic / Command Handler
+  
 
 ---
 
-## 4. Roadmap
+## 4. Manual Framing & Robustness Experiments
 
-### **Fase A — Base técnica en C**
+The following tests were executed to validate framing invariants, buffer limits, and byte-level behavior.
 
-#### 1. Chat con sockets stream simple
+### Observations & Conclusions
+* Tested with:
+  * `socat - UNIX-CONNECT:/tmp/unix_socket`
+  * `nc -U /tmp/unix_socket`.
+* UNIX stream sockets are byte streams (confirmed empirically)
+* recv() boundaries are unrelated to message boundaries
+* Control characters, NUL bytes, high-ASCII and binary data are received correctly
+* `printf("%s")` truncates at NUL — expected and debug-only
+* Pipes + `socat` create short-lived clients (EOF triggers disconnect)
+* Input is treated as opaque bytes at the framing layer
+* Sanitization is intentionally deferred to the command parsing layer
 
-* [x] Chat con sockets stream
-* [x] soporte para múltiples clientes
-* [x] `select()` o threads
-* seguridad mínima (validación de input básica, whitelist)
+### Testing performed
+#### Interactive testing 
+`socat - UNIX-CONNECT:/tmp/unix_socket`
+`nc -U /tmp/unix_socket`
+
+* `recv`  boundaries are still unreliable
+* `socat`/`nc` hide fragmentation and coalescing
+* Pressing Enter always send `\n`
+* Backslash (`\`) is opaque (`\x`, `\n`, `\t`, `\r`, `\0` are not interpreted)
+
+#### Inject input testing
+* Message without delimited is not processed
+  * printf "hello world" | socat - UNIX-CONNECT:/tmp/unix_socket
+* Normal newline-delimited message:
+  * printf "hello world\n" | socat - UNIX-CONNECT:/tmp/unix_socket
+  `says: hello world`
+* Embedded NUL truncates debug output
+  * printf "hello\0world\n" | socat - UNIX-CONNECT:/tmp/unix_socket
+  `says: hello`
+* Coalesced messages
+  * printf "hello\nworld\n" | socat - UNIX-CONNECT:/tmp/unix_socket
+  `says: hello` ; `says: world`
+* CLRF normalization
+  * printf "hello\nworld\r\n" | socat - UNIX-CONNECT:/tmp/unix_socket `says: hello` ; `says: world`
+* Byte opacity
+  * printf "\x3A\n\x3B\n \x24\n\x2C" | socat - UNIX-CONNECT:/tmp/unix_socket `says: :` ; `says: ;` ; `says: $`
+* Tabs and spacing  
+  * printf "Tabulate\t1\x092\x093\t4\n\tthis,\n  Alright\n" | socat - UNIX-CONNECT:/tmp/unix_socket
+  ```
+  says: Tabulate        1       2       3       4
+  says:         this,
+  says:   Alright
+  ```
+* Format string test (non-exploitable)
+  * python3 -c 'print("Z"*80+"\xAddress\n")' | socat - UNIX-CONNECT:/tmp/unix_socket `says: ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ­dress` ; `says: `
+* Buffer overflow enforcement
+  * python3 -c 'print("B"*1024+"\xDEADBEEF\n")' | socat - UNIX-CONNECT:/tmp/unix_socket
+    > 2025/12/14 21:17:07 socat[97850] E read(5, 0x5833c825e000, 8192): Connection reset by peer `buffer overflow`
+* Below overflow threshold (\xDE = ASCII Þ)
+  * python3 -c 'print("B"*1000+"\xDEADBEEF\n")' | socat - UNIX-CONNECT:/tmp/unix_socket ` says: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBÞADBEEF` ; `says: `
+
+---
+
+## 5. Explicitly Out of Scope (Current Stage)
+The following concerns are acknowledged but intentionally deferred:
+
+* Input sanitization / whitelisting
+* Command validation and semantics
+* Authentication and authorization
+* Encryption (TLS)
+* Format-string attacks beyond debug output
+* Resource exhaustion attacks beyond basic buffer limits
+* Persistent logging infrastructure
+* Graceful reconnect semantics
+* Production-grade error reporting to clients
+
+These will be revisited once the protocol grammar and semantics are defined.
+
+---
+
+## 6. Roadmap
+
+### Phase A — C Technical Foundation
+
+#### 1. Stream Socket Chat
+
+* Minimum security
+  * Robust framing
+  * Buffer limits
+  * Deferred sanitization to grammar and semantics
 
 #### 2. Salas + comandos
 
-* [x] estructuras de datos (`Client`, lista dinámica, diccionario de salas)
-* sincronización
-* comandos (`/join`, `/rooms`, etc.)
+* Data Structures (`Client`, rooms)
+* Synchronization
+* Commands (`/join`, `/rooms`, etc.)
+* Command parser (if (buffer[0] == '/') → structured parsing)
 
-#### 3. Mini-juegos
+#### 3. Mini-games (see above)
 
-* /roll     (tirar dado)
-* /guess    (adivinar número)
-* /vote     (decisiones compartidas)
-* parser de comandos > if (buffer[0] == '/' )
+### Phase B — Migración a Go
 
-
-### **Fase B — Migración a Go**
-
-4. Migrar lógica principal (Chat TCP)
-5. Convertir en API REST
-6. Dockerizar (arrancar viendo tema de contenedores de Sistemas Operativos y su taller)
-7. Agregar auth básica
-8. Tests
-9. Documentación sólida
-10. UI en React (Fase C)
+1. Migrate core logic (TCP Chat)
+2. Convert to REST API
+3. Dockerize (see SO containers subject)
+4. Add basic authentication
+5. Tests
+6. Solid Documentation
+7. UI (Phase C, possibly React)
