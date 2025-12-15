@@ -116,7 +116,7 @@ Therefore, the protocol must define explicit framing.
 
 ---
 
-### Framing strategy (current choice)
+### Layer 1: Framing strategy (current choice)
 
 **Delimiter-based protocol (****`\n`****)**
 * Message delimiter: `\n`
@@ -154,12 +154,144 @@ Benefits:
 
 ---
 
-### Alternative strategies (future)
+#### Alternative strategies (future)
 
 * Length-prefixed messages (binary protocols)
 * Structured encodings (e.g. protobuf, msgpack)
 
 These are intentionally deferred until a clear need arises.
+
+---
+
+### Layer 2: Grammar & Command Parsing (current choice)
+
+**Message model**
+* Each message is a single framed line, terminated by `\n`
+* Framing guarantees:
+    * No embedded `\n`
+    * Length ≤ INBUF_SIZE - 1
+* Grammar operates on raw bytes
+* Commands are ASCII-sensitive
+* Parsing is byte-oriented, not locale-aware
+    * No automatic detection of a client's language and country settings is issued
+
+**General syntax**
+* `<command> [<arg> ...]`
+* Fields are separated by single spaces (`0x20`)
+* No quoting or escaping
+* Trailing spaces are not allowed
+* Empty lines are invalid
+
+**Responsibilities**
+* Validate syntax
+* Interpret meaning (semantics)
+* Trigger state changes
+* Disconnect on error
+
+**Characteristics**
+* Read-only over message bytes
+* No buffer mutation
+* No memory ownership
+* No copying unless needed
+* No delimiter handling
+
+Trying to "reuse" framing extraction logic for grammar parsing would blur layers and introduce bugs.
+
+#### Commands
+##### NICK
+* Set or change username.
+
+    `NICK <username>`
+* Rules
+    * `<username>` is opaque bytes
+    * Length: `1..USERNAME_MAX-1`
+    * No spaces
+    * May be reassigned at any time
+* Effects
+    * Updates `client.username`
+    * Does not broadcast
+* Errors → disconnect
+    * Missing argument
+    * Too long
+    * Contains spaces
+##### JOIN
+* Enter a room.
+
+    `JOIN <room_id>`
+* Rules
+    * Parsed using `strtol`
+    * Valid range: implementation-defined (e.g. `0..INT_MAX`)
+* Effects
+    * Sets `client.room_id`
+    * Leaving previous room implicitly
+    * Broadcasts join event to new room
+* Errors → disconnect
+    * Missing argument
+    * Non-numeric
+    * Overflow
+##### LEAVE
+* Leave current room.
+
+    `LEAVE`
+* Effects
+    * Sets `room_id = -1`
+    * Broadcasts leave event
+* Errors → disconnect
+    * Extra arguments
+##### MSG
+* Send a message to current room.
+
+    `MSG <payload>`
+* Rules
+    * `<payload>` is opaque bytes
+    * May contain spaces
+    * May contain NULs
+    * Empty payload is allowed
+* Effects
+    * Broadcast payload to all clients in same room
+    * Sender may or may not receive echo (policy choice)
+* Errors → disconnect
+    * Not in a room
+    * Missing payload
+##### QUIT
+* Disconnect voluntarily.
+
+    `QUIT`
+* Effects
+    * Server closes socket
+    * Cleanup via `client_remove`
+* Errors → disconnect
+    * Extra arguments
+
+**Error Policy**
+
+* Any grammar violation → immediate disconnect
+    * No error responses
+    * No partial recovery
+    * No warnings
+
+This keeps:
+* State simple
+* Testing deterministic
+* Failure modes obvious
+
+**Parsing Strategy (Implementation Notes)**
+
+* Use `memchr` to find first space
+* Compare command using `memcmp`
+* Avoid `strtok`
+* Avoid copying unless necessary
+* Do not NUL-terminate unless required
+
+**Non-Goals (Explicit)**
+
+* No quoting
+* No escaping
+* No UTF-8 validation
+* No authentication
+* No permission checks
+
+These may be layered later without breaking framing.
 
 ---
 
