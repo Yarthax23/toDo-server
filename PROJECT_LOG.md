@@ -1,32 +1,49 @@
-## 2025-12-15 –  Day Five
+## 2025-12-15 –  From Framing to Meaning: Command Grammar
 ### Summary
 
-...
+Defined the command grammar and semantics on top of the already validated line-based framing layer. Formalized responsibilities and boundaries between framing and grammar parsing, and documented a minimal, unambiguous command set designed for deterministic parsing and early-stage correctness.
+
+No implementation was started today; the focus was on architectural clarity and specification stability before coding.
 
 ### Decisions
 
-* ...
+* Adopt an explicit, unambiguous command grammar with minimal parser complexity.
+    * All input is parsed uniformly as commands; no "command vs message" heuristics.
+    * Grammar violations result in immediate disconnect.
+* Keep grammar parsing strictly read-only over framed message bytes.
+    * No buffer mutation, no delimiter handling, no memory ownership.
+* Defer room and client modules.
+    * Rooms are implicit, defined by shared `room_id`.
+    * Broadcasting is implemented by iterating over `clients[]`.
+* Treat `room_id = -1` as "not in any room", not a joinable lobby.
 
 ### Added
 
-* ...
+* Grammar and command parsing layer documentation in `architecture.md`.
+* Formal command definitions: `NICK`, `JOIN`, `LEAVE`, `MSG`, `QUIT`.
+* Explicit error-handling and disconnect policy for grammar violations.
 
 ### Changed
 
-* ...
+* Clarified architectural layering between framing and grammar parsing.
+* Documented parsing constraints and non-goals for early protocol versions.
 
 ### Learnings
 
-* ...
+* Protocol grammar design benefits from being explicit and failure-intolerant in early stages.
+* Separating framing from grammar avoids subtle buffer ownership and parsing bugs.
+* Many familiar chat protocol features (quoting, escaping, free-form messages) introduce significant parser complexity.
 
 ### Next steps
 
-* [ ] ...
-
+* [ ] Implement `handle_command()` with strict validation and explicit disconnect paths.
+* [ ] Add basic server-generated messages (join/leave notifications).
+* [ ] Write targeted tests using `nc`/`socat` for each command and failure mode.
 
 ### Notes
 
-* ...
+* In message protocols, a payload is the content of a message excluding headers and metadata.
+    * The term also appears in malware literature, where the payload is the code that performs the malicious action, distinct from the propagation mechanism.
 
 
 ## 2025-12-14 –  Line-Based Framing and Robustness Testing
@@ -60,11 +77,11 @@ Implemented and validated newline-delimited stream framing for the UNIX socket s
 
 ### Next steps
 
-* [ ] Define command grammar and semantics on top of the line-based protocol.
+* [x] Define command grammar and semantics on top of the line-based protocol.
 * [ ] Implement command dispatch (handle_command) with explicit validation rules.
 * [ ] Decide on blocking model boundaries (what remains blocking, what may change later).
 * [ ] Introduce server-generated messages (server full, client disconnect).
-* [ ] Begin documenting protocol commands and error responses.
+* [x] Begin documenting protocol commands and error responses.
 
 
 ### Notes
