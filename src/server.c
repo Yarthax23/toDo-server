@@ -118,7 +118,7 @@ void start_server(const char *socket_path)
                 {
                     // Client closed or error
                     if (n<0) perror("recv");
-                    client_remove(i);
+                    client_remove(&clients[i]);
                     continue;
                 }
                 else
@@ -132,7 +132,7 @@ void start_server(const char *socket_path)
                         if (!memchr(clients[i].inbuf, '\n', clients[i].inbuf_len))
                         {
                             fprintf(stderr, "[server] Client %d buffer overflow\n", i);
-                            client_remove(i);
+                            client_remove(&clients[i]);
                             continue;
                         }
                     }
@@ -199,11 +199,11 @@ void client_init(Client *c)
     c->room_id = -1;
 }
 
-void client_remove(int idx)
+void client_remove(Client *c)
 {
-    if (clients[idx].socket != -1)
+    if (!c || c->socket != -1)
     {
-        close(clients[idx].socket);
+        close(c->socket);
     }
-    client_init(&clients[idx]);
+    client_init(c);
 }

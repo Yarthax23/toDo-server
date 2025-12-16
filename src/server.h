@@ -25,7 +25,7 @@ void clients_init(void);
 int find_free_client(void);
 int find_client_by_fd(int fd);
 void client_init(Client *c);
-void client_remove(int idx);
+void client_remove(Client *c);
 
 void broadcast_message(const char *msg);
 
