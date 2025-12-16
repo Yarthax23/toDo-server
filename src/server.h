@@ -8,7 +8,7 @@
 #define SOMAXCONN 16
 #define INBUF_SIZE 1024
 
-typedef struct
+typedef struct Client
 {
     int socket;  // -1 means unused
     int room_id; // -1 if not in a room
