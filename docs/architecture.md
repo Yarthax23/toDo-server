@@ -39,6 +39,17 @@ The design prioritizes **simplicity, correctness, and explicit state management*
 +-----------------------+
 ```
 
+### Dependencies
++-------------------------------+
+|   server.c                    |
+|   ├── owns Client (state)     |
+|   └── calls grammar           |
+|                               |
+|   grammar.c                   |
+|   ├── interprets messages     |
+|   └── acts on Client          |
++-------------------------------+
+
 ---
 
 ## Concurrency Model

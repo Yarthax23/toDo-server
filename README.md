@@ -90,7 +90,9 @@ make clean
 │   └── standards.md        # Internal coding and design rules
 ├── src/
 │   ├── server.c            # Server implementation
-│   └── server.h            # Public server interface
+│   ├── server.h            # Server public interface
+│   ├── grammar.c           # Grammar parsing and command dispatch (planned)
+│   └── grammar.h           # Grammar public interface (planned)
 ├── test/
 ├── NOTES.md                # Personal notes and ideas
 ├── PROJECT_LOG.md          # Daily progress and decisions
