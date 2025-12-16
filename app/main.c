@@ -1,7 +1,7 @@
 #include "server.h"
 
 
-int main(){
+int main(void){
     start_server("/tmp/unix_socket");
 
 }

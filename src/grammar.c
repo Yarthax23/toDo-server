@@ -21,6 +21,16 @@ static const command_spec command_table[] = {
 static const size_t command_table_len =
     sizeof(command_table) / sizeof(command_table[0]);
 
+static command_type parse_command(const char *msg,
+                                  size_t len,
+                                  const char **args,
+                                  size_t *args_len);
+static void handle_nick(Client *c, const char *args, size_t args_len);
+static void handle_join(Client *c, const char *args, size_t args_len);
+static void handle_leave(Client *c, const char *args, size_t args_len);
+static void handle_msg(Client *c, const char *args, size_t args_len);
+
+
 void handle_command(Client *c, const char *msg, size_t len)
 {
     const char *args;
@@ -50,7 +60,7 @@ void handle_command(Client *c, const char *msg, size_t len)
     }
 }
 
-command_type parse_command(const char *msg, size_t len,
+static command_type parse_command(const char *msg, size_t len,
                            const char **args, size_t *args_len)
 {
     // Extract command token
@@ -81,3 +91,17 @@ command_type parse_command(const char *msg, size_t len,
 
     return CMD_INVALID;
 }
+
+static void handle_nick(Client *c, const char *args, size_t args_len){
+    client_remove(c);
+};
+static void handle_join(Client *c, const char *args, size_t args_len){
+    client_remove(c);
+};
+static void handle_leave(Client *c, const char *args, size_t args_len){
+    client_remove(c);
+};
+static void handle_msg(Client *c, const char *args, size_t args_len){
+    client_remove(c);
+};
+

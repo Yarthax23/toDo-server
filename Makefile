@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -I./src
+CFLAGS = -Wall -Wextra -Werror=strict-prototypes -std=c11 -I./src
 DEBUG_FLAGS = -g -O0
 RELEASE_FLAGS = -O2
 

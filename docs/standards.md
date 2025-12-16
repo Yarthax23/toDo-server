@@ -109,3 +109,6 @@ DOCS       -> Si el proyecto crece
 
 8. **No Dead State**
     * If a field has no consumer, it does not belong in the struct.
+
+9. **Prototype Functions**
+    * Every function declaration must fully specify its parameters. No exceptions.
