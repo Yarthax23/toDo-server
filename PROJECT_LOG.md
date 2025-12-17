@@ -1,31 +1,63 @@
-## 2025-12-16 –  Day Six
+## 2025-12-16 –  Grammar Implementation and Lifecycle Corrections
 ### Summary
 
-...
+Implemented the first protocol command (`NICK`) following the previously defined grammar and semantics. Introduced a clean command dispatch mechanism, corrected object lifetime violations between grammar and server layers, and formalized module responsibilities.
+
+**Milestone:** Grammar layer implemented and enforceable.
 
 ### Decisions
 
-* ...
+* From this point forward, all new `typedef`’d types use lowercase `snake_case`.
+* Use command specification structures to dispatch and handle protocol messages.
+* Adopt `switch`-based command multiplexing.
+    * Explicit control flow.
+    * Easy to debug and audit.
 
 ### Added
 
-* ...
+* Initial command handling implementation (`NICK`) with strict argument validation.
+* First explicit dependency documentation in `architecture.md`.
+* Formal command specifications in the grammar layer.
 
 ### Changed
 
-* ...
+* Updated project structure in `README.md`.
+* Refactored `client_remove` to operate on `Client *` instead of index.
+* Made `Client` explicitly tagged to allow forward declarations and avoid type ambiguity.
+    * `Client *c` and `struct Client *c` are now non-conflicting.
+* Enforced grammar purity:
+    * Grammar code no longer mutates connection lifetime.
+    * `handle_command` now returns a `ommand_result`
+    * Client teardown is server-owned and authoritative.
+    * This preserves object lifetime safety and separation of concerns.
 
 ### Learnings
 
-* ...
+* Module boundaries.
+    * Circular header inclusion is what breaks builds.
+    * Headers expose what other modules must know to use a module — not what a module happens to use internally.
+    * Headers define obligations, not conveniences.
+* Validation strategy.
+    * Validate incrementally; fail fast.
+    * One invariant per check.
+    * Easier to reason about and audit.
+    * Large compound conditionals are a bug factory.
+* APIs should match how data naturally flows through the system.
 
 ### Next steps
 
-* [ ] ...
+* [] Implement remaining protocol commands (`JOIN`, `LEAVE`, `MSG`, `QUIT`)
+* [] Add basic server-generated messages (join/leave notifications)
+* [] Expand manual protocol testing for all commands
 
 ### Notes
 
-* ...
+* `goto` is useful for branching to a cleanup or failure block.
+    * Removes duplicated cleanup logic.
+    * Avoid for general control flow (spaghetti code).
+    * Reference https://www.geeksforgeeks.org/c/goto-statement-in-c/.
+* Every commit must build cleanly with the project’s own compiler flags.
+* Do not introduce new observable behavior while still implementing the spec that defines it.
 
 
 ## 2025-12-15 –  From Framing to Meaning: Command Grammar
@@ -108,7 +140,7 @@ Implemented and validated newline-delimited stream framing for the UNIX socket s
 ### Next steps
 
 * [x] Define command grammar and semantics on top of the line-based protocol.
-* [ ] Implement command dispatch (handle_command) with explicit validation rules.
+* [x] Implement command dispatch (handle_command) with explicit validation rules.
 * [ ] Decide on blocking model boundaries (what remains blocking, what may change later).
 * [ ] Introduce server-generated messages (server full, client disconnect).
 * [x] Begin documenting protocol commands and error responses.
@@ -118,6 +150,7 @@ Implemented and validated newline-delimited stream framing for the UNIX socket s
 
 * Relative UNIX socket path bug discovered and fixed; absolute paths are now required.
 * Extensive manual testing with nc, socat, printf, and Python (-c 'print("")') confirmed framing behavior under edge cases (CRLF, embedded NULs, large payloads, missing delimiters, overflow).
+* You cannot destroy the current object and then continue executing code that assumes it exists.
 
 
 ## 2025-12-13 –  Transition to Event-Driven Server Architecture
