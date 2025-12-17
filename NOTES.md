@@ -6,18 +6,7 @@
 
 ## 1. Ideas
 
-* Design a simple protocol
 * Set a default username: Client i: pass index into client_init
-* Implement rooms
-* Mini-games / commands:
-  * /roll dice
-  * /guess secret number
-  * /vote shared decisions
-  * produced/consumer (e.g. washing machine simulation)
-  * change Client's Name, /nick <username>
-  * /brainstorm mode that updates and sorts chat ideas (TBD)
-* Futuro: 
-  * migrar to Go
 
 ---
 
@@ -25,7 +14,6 @@
 
 * Testing frameworks in C (CUnit, Unity, Criterion)
 * Basic security / hardening
-* Graceful client disconnects
 * Signals and process handling (`sigaction`: `signal` is deprecated)
 * `epoll` as a scalable alternative to `select`
 * Linux and Unix System Programming course https://man7.org/training/
@@ -152,30 +140,48 @@ These will be revisited once the protocol grammar and semantics are defined.
 
 ## 6. Roadmap
 
-### Phase A — C Technical Foundation
+### Phase A — Core C Implementation (Current / Near Term)
 
-#### 1. Stream Socket Chat
+1. **Stream Socket Chat**
+   * AF_UNIX sockets (`SOCK_STREAM`)
+   * Event-driven I/O using `select()`
+   * Fixed-size client table
+   * Line-based framing (`\n`-delimited)
+   * Strict grammar parsing (`NICK`, `JOIN`, `LEAVE`, `MSG`, `QUIT`)
+   * Disconnect-on-error for invalid commands
+   * Buffer and overflow protection
 
-* Minimum security
-  * Robust framing
-  * Buffer limits
-  * Deferred sanitization to grammar and semantics
+2. **Rooms and Commands**
+   * Implement room assignment via `room_id`
+   * Broadcasting to all clients in a room
+   * Command dispatch and handler structure
+   * Client nickname management (`NICK`)
+   * Room join/leave semantics (`JOIN`, `LEAVE`)
 
-#### 2. Salas + comandos
+3. **Mini-games / Additional Commands**
+   * `ROLL` — dice
+   * `GUESS` — secret number
+   * `VOTE` — shared decisions
+   * `BRAINSTORM` — collaborative ideas (TBD)
+   * Additional commands deferred until protocol and room logic are stable
 
-* Data Structures (`Client`, rooms)
-* Synchronization
-* Commands (`/join`, `/rooms`, etc.)
-* Command parser (if (buffer[0] == '/') → structured parsing)
+---
 
-#### 3. Mini-games (see above)
+### Phase B — Migration to Go / Extended Features (Mid-Term)
 
-### Phase B — Migración a Go
+1. Port core logic to Go
+2. Add TCP networking
+3. REST API
+4. Dockerization and deployment
+5. Basic authentication / security enhancements
+6. Expand testing coverage and formal documentation
+7. Optional UI (React)
 
-1. Migrate core logic (TCP Chat)
-2. Convert to REST API
-3. Dockerize (see SO containers subject)
-4. Add basic authentication
-5. Tests
-6. Solid Documentation
-7. UI (Phase C, possibly React)
+---
+
+### Phase C — Optional / Long-Term
+
+* UI enhancements
+* Persistent storage
+* Advanced server-side logging
+* Minigames and gamification
