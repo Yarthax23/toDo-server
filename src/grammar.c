@@ -1,6 +1,7 @@
 #include "grammar.h"
 #include "server.h" // Client
 
+#include <errno.h>
 #include <stdlib.h> // EXIT
 #include <string.h> // mem*, str*
 
@@ -26,7 +27,7 @@ static command_type parse_command(const char *msg,
                                   const char **args,
                                   size_t *args_len);
 static command_result handle_nick(Client *c, const char *args, size_t args_len);
-static void handle_join(Client *c, const char *args, size_t args_len);
+static command_result handle_join(Client *c, const char *args, size_t args_len);
 static void handle_leave(Client *c, const char *args, size_t args_len);
 static void handle_msg(Client *c, const char *args, size_t args_len);
 
@@ -42,8 +43,7 @@ command_result handle_command(Client *c, const char *msg, size_t len)
     case CMD_NICK:
         return handle_nick(c, args, args_len);
     case CMD_JOIN:
-        handle_join(c, args, args_len);
-        break;
+        return handle_join(c, args, args_len);
     case CMD_LEAVE:
         handle_leave(c, args, args_len);
         break;
@@ -109,7 +109,40 @@ error:
     return CMD_DISCONNECT;
 }
 
-static void handle_join(Client *c, const char *args, size_t args_len) {
+static command_result handle_join(Client *c, const char *args, size_t args_len)
+{
+    // Missing argument
+    if (!args)
+        goto error;
+
+    char buf[32];
+    if (args_len >= sizeof(buf))
+        goto error;
+
+    memcpy(buf, args, args_len);
+    buf[args_len] = '\0';
+
+    errno = 0;
+    char *end = NULL;
+    long room = strtol(buf, &end, 10);
+
+    // No digits
+    if (end == buf)
+        goto error;
+
+    // Trailing garbage (strict grammar)
+    if (*end != '\0')
+        goto error;
+
+    // Out of range
+    if ((errno == ERANGE) || room < 0 || room > INT_MAX)
+        goto error;
+
+    c->room_id = (int)room;
+    return CMD_OK;
+
+error:
+    return CMD_DISCONNECT;
 };
 static void handle_leave(Client *c, const char *args, size_t args_len) {
 };

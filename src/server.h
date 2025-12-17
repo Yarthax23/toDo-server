@@ -7,6 +7,7 @@
 #define USERNAME_MAX 32
 #define SOMAXCONN 16
 #define INBUF_SIZE 1024
+#define INT_MAX 10
 
 typedef struct Client
 {
