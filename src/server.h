@@ -19,11 +19,11 @@ typedef struct Client
 
 // Public server functions
 void start_server(const char *socket_path);
-void clients_init(void);
 
 //_Helpers
 int find_free_client(void);
 int find_client_by_fd(int fd);
+void clients_init(void);
 void client_init(Client *c);
 void client_remove(Client *c);
 

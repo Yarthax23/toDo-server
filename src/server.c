@@ -1,5 +1,5 @@
-#include "server.h"     // start_server
-#include "grammar.h"    // handle_command
+#include "server.h"  // start_server
+#include "grammar.h" // handle_command
 
 #include <stdio.h>      // printf
 #include <stdlib.h>     // EXIT tags
@@ -14,14 +14,6 @@ static Client clients[MAX_CLIENTS];
 
 static fd_set readfds;
 int max_fd;
-
-void clients_init(void)
-{
-    for (int i = 0; i < MAX_CLIENTS; i++)
-    {
-        client_init(&clients[i]);
-    }
-}
 
 void start_server(const char *socket_path)
 {
@@ -119,7 +111,8 @@ void start_server(const char *socket_path)
                 if (n <= 0)
                 {
                     // Client closed or error
-                    if (n<0) perror("recv");
+                    if (n < 0)
+                        perror("recv");
                     client_remove(&clients[i]);
                     continue;
                 }
@@ -159,7 +152,8 @@ void start_server(const char *socket_path)
 
                         // Process msg
                         printf("[server] Client %d says: %s\n", i, msg);
-                        if (handle_command(&clients[i], msg, msg_len) == CMD_DISCONNECT){
+                        if (handle_command(&clients[i], msg, msg_len) == CMD_DISCONNECT)
+                        {
                             client_remove(&clients[i]);
                             continue;
                         };
@@ -196,6 +190,14 @@ int find_client_by_fd(int fd)
             return i;
     }
     return -1;
+}
+
+void clients_init(void)
+{
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        client_init(&clients[i]);
+    }
 }
 
 void client_init(Client *c)

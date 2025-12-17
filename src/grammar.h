@@ -22,6 +22,4 @@ typedef enum
 struct Client;
 command_result handle_command(struct Client *c, const char *msg, size_t len);
 
-
-
 #endif // GRAMMAR_H
