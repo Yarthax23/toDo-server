@@ -1,8 +1,8 @@
 # Event‑Driven Chat Server in C
 
-A learning‑focused systems programming project to explore **low‑level networking**, **I/O multiplexing**, and **protocol design** in C.
+A learning‑focused systems programming project to explore **low‑level networking**, **I/O multiplexing**, and **explicit protocol design** in C.
 
-The project incrementally builds a multi‑client chat server, prioritizing correctness, explicit state management, and clear architectural decisions.
+The project incrementally builds a multi‑client chat server, prioritizing correctness, deterministic parsing, and clear architectural boundaries.
 
 
 
@@ -13,51 +13,31 @@ The project incrementally builds a multi‑client chat server, prioritizing corr
 * UNIX domain stream sockets (`AF_UNIX`, `SOCK_STREAM`)
 * Single‑process, single‑threaded server
 * Event‑driven I/O using `select()`
-* Fixed‑size client table
-* Line‑based text protocol (planned, `\n`‑terminated)
+* Fixed‑size client table (no dynamic allocation)
+* Line‑based framing (`\n`-delimited)
+* Explicit command grammmar
+* Strict validation and disconnect-on-violation policy
+* Architecture, standards, and design documentation
 
-**TCP support is planned for a later phase**, particularly during the Go migration.
+> TCP support and Go migration are intentionally deferred to a later phase.
 
+## Protocol Overview
 
-## Features
-
-### Implemented
-
-* Project skeleton and build automation (`Makefile`)
-* AF_UNIX server socket setup
-* `select()`‑based event loop
-* Client tracking via fixed‑size array
-* Architecture and design documentation
-
-### Planned (near term)
-
-* Line‑based text protocol (`\n`‑terminated)
-* Message broadcasting
-* Command system (`/rooms`, `/join`, `/quit`, …)
-* Graceful client disconnect handling
-* Input buffering and protocol framing
-
-### Planned (mid‑term)
-
-* Chat rooms
-* Small built‑in minigames (`/roll`, `/guess`, `/vote`)
-* Migration to TCP during Go rewrite
-* REST API
-* Dockerization
-
-
-## Protocol Overview (Planned)
-
-Simple text protocol:
+The server uses a line-based, command-only text protocol.
 
 * Messages are UTF‑8 text ending with `\n`
-* Commands start with `/`
-* Example commands:
-
-  * `/rooms` — list available rooms
-  * `/join <room>` — join a room
-  * `/quit` — disconnect
-
+* All input is parsed as a command (no free-form messages)
+* Grammar is deterministic and failure-intolerant
+* Commands:
+```markdown
+  * NICK <name>     Set client nickname
+  * JOIN <room_id>  Join a room
+  * LEAVE           Leave current room
+  * MSG <payload>   Send message to current room
+  * QUIT            Disconnect
+```
+Grammar violations result in immediate disconnect.
+See `docs/architecture.md` for the full protocol specification.
 
 ## Build Instructions
 
@@ -89,13 +69,13 @@ make clean
 │   ├── architecture.md     # Canonical architecture documentation
 │   └── standards.md        # Internal coding and design rules
 ├── src/
-│   ├── server.c            # Server implementation
+│   ├── server.c            # Server implementation (owns Client state)
 │   ├── server.h            # Server public interface
-│   ├── grammar.c           # Grammar parsing and command dispatch (planned)
-│   └── grammar.h           # Grammar public interface (planned)
+│   ├── grammar.c           # Command parsing and validation
+│   └── grammar.h           # Grammar public interface
 ├── test/
 ├── NOTES.md                # Personal notes and ideas
-├── PROJECT_LOG.md          # Daily progress and decisions
+├── PROJECT_LOG.md          # Daily progress log
 ├── README.md               # Project overview (this file)
 ├── Makefile
 └── .gitignore
@@ -107,7 +87,10 @@ make clean
 * Single process
 * Event‑driven I/O using `select()`
 * Clients managed via a fixed‑size table
-* Explicit protocol framing (no reliance on `recv()` boundaries)
+* Clear separation between:
+  * Framing
+  * Grammar parsing
+  * Server state mutation
 
 See `docs/architecture.md` for full details.
 
@@ -140,8 +123,18 @@ See `docs/architecture.md` for full details.
 This is a **learning‑oriented project**.
 Design decisions are documented explicitly, and simplicity is preferred over premature optimization.
 
+## Why This Protocol Is Strict
+
+* Every message is parsed deterministically.
+* Grammar violations result in immediate disconnect.
+* Separating framing from grammar ensures buffer safety and predictable state.
+* All command validation occurs before any server-side state mutation.
+* This approach minimizes unexpected side effects and simplifies debugging.
+
+
 See:
 
 * `docs/architecture.md`
-* `PROJECT_LOG.md`
 * `docs/standards.md`
+* `PROJECT_LOG.md`
+
