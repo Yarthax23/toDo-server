@@ -196,15 +196,20 @@ void clients_init(void)
 {
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
-        client_init(&clients[i]);
+        client_init(&clients[i], i);
     }
 }
 
-void client_init(Client *c)
+void client_init(Client *c, int idx)
 {
     memset(c, 0, sizeof(*c));
     c->socket = -1;
     c->room_id = -1;
+
+    snprintf(c->username,
+             USERNAME_MAX,
+             "Client %d",
+             idx);
 }
 
 void client_remove(Client *c)
@@ -213,5 +218,5 @@ void client_remove(Client *c)
     {
         close(c->socket);
     }
-    client_init(c);
+    client_init(c, find_client_by_fd(c->socket));
 }

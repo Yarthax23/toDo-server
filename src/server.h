@@ -25,7 +25,7 @@ void start_server(const char *socket_path);
 int find_free_client(void);
 int find_client_by_fd(int fd);
 void clients_init(void);
-void client_init(Client *c);
+void client_init(Client *c, int idx);
 void client_remove(Client *c);
 
 void broadcast_message(const char *msg);
