@@ -1,3 +1,37 @@
+## 2025-12-18 – Day Eight
+### Summary
+
+...
+
+### Decisions
+
+* ...
+
+### Added
+
+* ...
+
+### Changed
+
+* ...
+
+### Removed
+
+* ...
+
+### Learnings
+
+* ...
+
+### Next steps
+
+* [] ...
+
+### Notes
+
+* ...
+
+
 ## 2025-12-17 – JOIN Command Implementation
 ### Summary
 
