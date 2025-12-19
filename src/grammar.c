@@ -24,12 +24,19 @@ static const size_t command_table_len =
     sizeof(command_table) / sizeof(command_table[0]);
 
 static command_type parse_command(const char *msg, size_t len, const char **args, size_t *args_len);
-static command_result handle_nick(Client *c, const char *args, size_t args_len);
-static command_result handle_join(Client *c, const char *args, size_t args_len);
-static command_result handle_leave(Client *c, const char *args, size_t args_len);
-static command_result handle_msg(Client *c, const char *args, size_t args_len);
+static command_action handle_nick(Client *c, const char *args, size_t args_len);
+static command_action handle_join(Client *c, const char *args, size_t args_len);
+static command_action handle_leave(Client *c, const char *args, size_t args_len);
+static command_action handle_msg(Client *c, const char *args, size_t args_len);
 
-command_result handle_command(Client *c, const char *msg, size_t len)
+static inline command_action action_ok(void);
+static inline command_action action_disconnect(int old_room);
+static inline command_action action_nick(const char *p, size_t len);
+static inline command_action action_join(int new_room);
+static inline command_action action_leave(int old_room);
+static inline command_action action_broadcast(const char *p, size_t len);
+
+command_action handle_command(Client *c, const char *msg, size_t len)
 {
     const char *args;
     size_t args_len;
@@ -48,15 +55,15 @@ command_result handle_command(Client *c, const char *msg, size_t len)
         return handle_msg(c, args, args_len);
     case CMD_QUIT:
         if (args != NULL || args_len != 0)
-            return CMD_DISCONNECT; // protocol violation
-        return CMD_DISCONNECT;     // valid quit
+            return action_disconnect(c->room_id); // protocol violation
+        return action_disconnect(c->room_id);     // valid quit
 
     default:
-        return CMD_DISCONNECT;
+        return action_disconnect(c->room_id);
     }
 
     // Unreachable, documents intent
-    return CMD_OK;
+    return action_ok();
 }
 
 static command_type parse_command(const char *msg, size_t len,
@@ -88,7 +95,7 @@ static command_type parse_command(const char *msg, size_t len,
     return CMD_INVALID;
 }
 
-static command_result handle_nick(Client *c, const char *args, size_t args_len)
+static command_action handle_nick(Client *c, const char *args, size_t args_len)
 {
     // Missing argument
     if (!args)
@@ -106,15 +113,13 @@ static command_result handle_nick(Client *c, const char *args, size_t args_len)
     if (memchr(args, ' ', args_len))
         goto error;
 
-    memcpy(c->username, args, args_len);
-    c->username[args_len] = '\0';
-    return CMD_OK;
+    return action_nick(args, args_len);
 
 error:
-    return CMD_DISCONNECT;
+    return action_disconnect(c->room_id);
 }
 
-static command_result handle_join(Client *c, const char *args, size_t args_len)
+static command_action handle_join(Client *c, const char *args, size_t args_len)
 {
     // Missing argument
     if (!args)
@@ -133,7 +138,7 @@ static command_result handle_join(Client *c, const char *args, size_t args_len)
 
     errno = 0;
     char *end = NULL;
-    long new_room = strtol(buf, &end, 10);
+    long room = strtol(buf, &end, 10);
 
     // No digits
     if (end == buf)
@@ -144,37 +149,36 @@ static command_result handle_join(Client *c, const char *args, size_t args_len)
         goto error;
 
     // Out of range
-    if ((errno == ERANGE) || new_room < 0 || new_room > INT_MAX)
+    if ((errno == ERANGE) || room < 0 || room > INT_MAX)
         goto error;
 
-    int old_room = c->room_id;
-    c->room_id = (int)new_room;
+    // Same room
+    if (c->room_id == (int)room)
+        return action_ok();
 
-    if (old_room != new_room)
-        return CMD_JOIN_ROOM;
-    return CMD_OK;
+    // Join new room
+    return action_join((int)room);
 
 error:
-    return CMD_DISCONNECT;
+    return action_disconnect(c->room_id);
 };
 
-static command_result handle_leave(Client *c, const char *args, size_t args_len)
+static command_action handle_leave(Client *c, const char *args, size_t args_len)
 {
     // Extra arguments
     if (args || args_len)
         goto error;
 
+    // Already in no-room
     if (c->room_id == -1)
-        // Already in no-room
-        return CMD_OK;
+        return action_ok();
 
-    c->room_id = -1;
-    return CMD_LEAVE_ROOM;
+    return action_leave(c->room_id);
 error:
-    return CMD_DISCONNECT;
+    return action_disconnect(c->room_id);
 };
 
-static command_result handle_msg(Client *c, const char *args, size_t args_len)
+static command_action handle_msg(Client *c, const char *args, size_t args_len)
 {
     // Not in a room
     if (c->room_id < 0)
@@ -184,7 +188,38 @@ static command_result handle_msg(Client *c, const char *args, size_t args_len)
     if (!args)
         goto error;
 
-    return CMD_BROADCAST_MSG;
+    return action_broadcast(args, args_len);
 error:
-    return CMD_DISCONNECT;
+    return action_disconnect(c->room_id);
 };
+
+// Helper constructors (Macros so handlers stay readable)
+static inline command_action action_ok(void)
+{
+    return (command_action){.type = CMD_OK, .room_id = -1};
+}
+
+static inline command_action action_disconnect(int old_room)
+{
+    return (command_action){.type = CMD_DISCONNECT, .room_id = old_room};
+}
+
+static inline command_action action_nick(const char *p, size_t len)
+{
+    return (command_action){.type = CMD_SET_NICK, .room_id = -1, .payload = p, .payload_len = len};
+}
+
+static inline command_action action_join(int new_room)
+{
+    return (command_action){.type = CMD_JOIN_ROOM, .room_id = new_room};
+}
+
+static inline command_action action_leave(int old_room)
+{
+    return (command_action){.type = CMD_LEAVE_ROOM, .room_id = old_room};
+}
+
+static inline command_action action_broadcast(const char *p, size_t len)
+{
+    return (command_action){.type = CMD_BROADCAST_MSG, .room_id = -1, .payload = p, .payload_len = len};
+}

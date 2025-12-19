@@ -163,26 +163,38 @@ void start_server(const char *socket_path)
 
                 // Process msg
                 printf("[server] Client %d says: %s\n", i, msg);
-                int old_room = c->room_id;
-                command_result res = handle_command(c, msg, msg_len);
+                command_action action = handle_command(c, msg, msg_len);
 
-                switch (res)
+                switch (action.type)
                 {
                 case CMD_DISCONNECT:
+                    if (action.room_id != -1)
+                        broadcast_leave(action.room_id, c);
                     client_remove(c);
-                    broadcast_leave(old_room, c);
                     goto next_client;
 
+                case CMD_SET_NICK:
+                    memcpy(c->username, action.payload, action.payload_len);
+                    c->username[action.payload_len] = '\0';
+                    break;
+
                 case CMD_JOIN_ROOM:
-                    broadcast_join(c->room_id, c);
+                    c->room_id = action.room_id;
+                    broadcast_join(action.room_id, c);
                     break;
 
                 case CMD_LEAVE_ROOM:
-                    broadcast_leave(old_room, c);
+                    c->room_id = -1;
+                    broadcast_leave(action.room_id, c);
                     break;
 
                 case CMD_BROADCAST_MSG:
-                    broadcast_room(c->room_id, c, msg, msg_len);
+                    if (c->room_id != -1)
+                        broadcast_room(c->room_id, c, action.payload, action.payload_len);
+                    break;
+
+                case CMD_OK:
+                default:
                     break;
                 }
 
