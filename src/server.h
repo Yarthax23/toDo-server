@@ -13,6 +13,7 @@ typedef struct Client
 {
     int socket;  // -1 means unused
     int room_id; // -1 if not in a room
+    int index;   // owned identity
     char username[USERNAME_MAX];
     char inbuf[INBUF_SIZE];
     size_t inbuf_len;
@@ -23,7 +24,6 @@ void start_server(const char *socket_path);
 
 //_Helpers
 int find_free_client(void);
-int find_client_by_fd(int fd);
 void clients_init(void);
 void client_init(Client *c, int idx);
 void client_remove(Client *c);

@@ -119,7 +119,7 @@ void start_server(const char *socket_path)
                              c->inbuf + c->inbuf_len,
                              INBUF_SIZE - c->inbuf_len,
                              0);
-                             
+
             // Client closed or error
             if (n <= 0)
             {
@@ -209,16 +209,6 @@ int find_free_client(void)
     return -1;
 }
 
-int find_client_by_fd(int fd)
-{
-    for (int i = 0; i < MAX_CLIENTS; i++)
-    {
-        if (clients[i].socket == fd)
-            return i;
-    }
-    return -1;
-}
-
 void clients_init(void)
 {
     for (int i = 0; i < MAX_CLIENTS; i++)
@@ -232,20 +222,20 @@ void client_init(Client *c, int idx)
     memset(c, 0, sizeof(*c));
     c->socket = -1;
     c->room_id = -1;
+    c->index = idx;
 
-    snprintf(c->username,
-             USERNAME_MAX,
-             "Client %d",
-             idx);
+    snprintf(c->username, USERNAME_MAX, "Client %d", idx);
 }
 
 void client_remove(Client *c)
 {
-    if (!c || c->socket != -1)
-    {
+    if (!c)
+        return;
+
+    if (c->socket != -1)
         close(c->socket);
-    }
-    client_init(c, find_client_by_fd(c->socket));
+
+    client_init(c, c->index);
 }
 
 void broadcast_join(int room_id, Client *c)
