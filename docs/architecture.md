@@ -132,7 +132,7 @@ Therefore, the protocol must define explicit framing.
 
 ---
 
-### Layer 1: Framing strategy (current choice)
+### Layer 1: Framing strategy
 
 **Delimiter-based protocol (****`\n`****)**
 * Message delimiter: `\n`
@@ -179,7 +179,7 @@ These are intentionally deferred until a clear need arises.
 
 ---
 
-### Layer 2: Grammar & Command Parsing (current choice)
+### Layer 2: Grammar & Command Parsing
 
 **Message model**
 * Each message is a single framed line, terminated by `\n`
@@ -308,6 +308,22 @@ This keeps:
 * No permission checks
 
 These may be layered later without breaking framing.
+
+---
+
+### Layer 3: Executing Room-Scoped Broadcasts and Server Messages
+
+The execution layer is responsible for perfoming side effects derived from validated protocol intent.
+
+**Why printf-only messages are a trap**
+Printf-based messages:
+* Are invisible to connected clients
+* Bypass the protocol entirely
+* Create non-reproducible behavior
+* Are guaranteed to be removed or rewritten
+
+All observable behavior must flow through the protocol and
+be delivered via explicit server-managed broadcast paths.
 
 ---
 

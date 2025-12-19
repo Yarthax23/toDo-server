@@ -15,9 +15,11 @@ typedef enum
 
 typedef enum
 {
-    CMD_OK,
-    CMD_DISCONNECT,
-    CMD_BROADCAST
+    CMD_OK,           // Nothing to do
+    CMD_DISCONNECT,   // Disconnect client
+    CMD_JOIN_ROOM,    // Client changes room
+    CMD_LEAVE_ROOM,   // Client left room
+    CMD_BROADCAST_MSG // Broadcast payload
 } command_result;
 
 struct Client;

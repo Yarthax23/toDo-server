@@ -23,10 +23,7 @@ static const command_spec command_table[] = {
 static const size_t command_table_len =
     sizeof(command_table) / sizeof(command_table[0]);
 
-static command_type parse_command(const char *msg,
-                                  size_t len,
-                                  const char **args,
-                                  size_t *args_len);
+static command_type parse_command(const char *msg, size_t len, const char **args, size_t *args_len);
 static command_result handle_nick(Client *c, const char *args, size_t args_len);
 static command_result handle_join(Client *c, const char *args, size_t args_len);
 static command_result handle_leave(Client *c, const char *args, size_t args_len);
@@ -50,6 +47,10 @@ command_result handle_command(Client *c, const char *msg, size_t len)
     case CMD_MSG:
         return handle_msg(c, args, args_len);
     case CMD_QUIT:
+        if (args != NULL || args_len != 0)
+            return CMD_DISCONNECT; // protocol violation
+        return CMD_DISCONNECT;     // valid quit
+
     default:
         return CMD_DISCONNECT;
     }
@@ -132,7 +133,7 @@ static command_result handle_join(Client *c, const char *args, size_t args_len)
 
     errno = 0;
     char *end = NULL;
-    long room = strtol(buf, &end, 10);
+    long new_room = strtol(buf, &end, 10);
 
     // No digits
     if (end == buf)
@@ -143,10 +144,14 @@ static command_result handle_join(Client *c, const char *args, size_t args_len)
         goto error;
 
     // Out of range
-    if ((errno == ERANGE) || room < 0 || room > INT_MAX)
+    if ((errno == ERANGE) || new_room < 0 || new_room > INT_MAX)
         goto error;
 
-    c->room_id = (int)room;
+    int old_room = c->room_id;
+    c->room_id = (int)new_room;
+
+    if (old_room != new_room)
+        return CMD_JOIN_ROOM;
     return CMD_OK;
 
 error:
@@ -162,9 +167,9 @@ static command_result handle_leave(Client *c, const char *args, size_t args_len)
     if (c->room_id == -1)
         // Already in no-room
         return CMD_OK;
-        
+
     c->room_id = -1;
-    return CMD_OK;
+    return CMD_LEAVE_ROOM;
 error:
     return CMD_DISCONNECT;
 };
@@ -179,8 +184,7 @@ static command_result handle_msg(Client *c, const char *args, size_t args_len)
     if (!args)
         goto error;
 
-    (void)args_len;
-    return CMD_BROADCAST;
+    return CMD_BROADCAST_MSG;
 error:
     return CMD_DISCONNECT;
 };

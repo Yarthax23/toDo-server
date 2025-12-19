@@ -152,17 +152,36 @@ void start_server(const char *socket_path)
 
                         // Process msg
                         printf("[server] Client %d says: %s\n", i, msg);
-                        if (handle_command(&clients[i], msg, msg_len) == CMD_DISCONNECT)
+                        int old_room = clients[i].room_id;
+                        command_result res = handle_command(&clients[i], msg, msg_len);
+
+                        switch (res)
                         {
+                        case CMD_DISCONNECT:
                             client_remove(&clients[i]);
-                            continue;
-                        };
+                            broadcast_leave(old_room, &clients[i]);
+                            goto next_client;
+
+                        case CMD_JOIN_ROOM:
+                            broadcast_join(clients[i].room_id, &clients[i]);
+                            break;
+
+                        case CMD_LEAVE_ROOM:
+                            broadcast_leave(old_room, &clients[i]);
+                            break;
+
+                        case CMD_BROADCAST_MSG:
+                            broadcast_room(clients[i].room_id, &clients[i], msg, msg_len);
+                            break;
+                        }
 
                         // Remove processed bytes (+1 for '\n')
                         size_t remaining = clients[i].inbuf_len - (nl - clients[i].inbuf + 1);
                         memmove(clients[i].inbuf, nl + 1, remaining);
                         clients[i].inbuf_len = remaining;
                     }
+                next_client:
+                    break;
                 }
             }
         }
@@ -220,3 +239,28 @@ void client_remove(Client *c)
     }
     client_init(c, find_client_by_fd(c->socket));
 }
+
+void broadcast_join(int room_id, Client *c)
+{
+    (void)room_id;
+    (void)c;
+};
+void broadcast_leave(int room_id, Client *c)
+{
+    (void)room_id;
+    (void)c;
+};
+void broadcast_room(int room_id, Client *sender, const char *msg, size_t len)
+{
+    (void)room_id;
+    (void)sender;
+    (void)msg;
+    (void)len;
+};
+void broadcast_msg(int room_id, Client *sender, const char *msg, size_t len)
+{
+    (void)room_id;
+    (void)sender;
+    (void)msg;
+    (void)len;
+};

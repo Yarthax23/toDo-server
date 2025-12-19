@@ -28,6 +28,9 @@ void clients_init(void);
 void client_init(Client *c, int idx);
 void client_remove(Client *c);
 
-void broadcast_message(const char *msg);
+void broadcast_join(int room_id, Client *c);
+void broadcast_leave(int room_id, Client *c);
+void broadcast_room(int room_id, Client *sender, const char *msg, size_t len);
+void broadcast_msg(int room_id, Client *sender, const char *msg, size_t len);
 
 #endif // SERVER_H
