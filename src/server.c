@@ -8,9 +8,23 @@
 #include <sys/select.h> // fd_set (select)
 #include <sys/un.h>     // sockaddr_un
 
+#define MAX_CLIENTS 10
+#define SERVER_BACKLOG 16
+
 static int server_socket;
 static struct sockaddr_un server_addr;
 static Client clients[MAX_CLIENTS];
+
+static int find_free_client(void);
+static void clients_init(void);
+static void client_init(Client *c, int idx);
+static void client_remove(Client *c);
+static void client_set_username(Client *c, const char *p, size_t len);
+
+static void broadcast_join(int room_id, Client *c);
+static void broadcast_leave(int room_id, Client *c);
+static void broadcast_quit(int room_id, Client *c);
+static void broadcast_room(int room_id, Client *sender, const char *msg, size_t len);
 
 void start_server(const char *socket_path)
 {
@@ -46,7 +60,7 @@ void start_server(const char *socket_path)
         exit(EXIT_FAILURE);
     }
 
-    if (listen(server_socket, SOMAXCONN) == -1)
+    if (listen(server_socket, SERVER_BACKLOG) == -1)
     {
         perror("listen");
         exit(EXIT_FAILURE);
@@ -211,7 +225,7 @@ void start_server(const char *socket_path)
     unlink(server_addr.sun_path);
 }
 
-int find_free_client(void)
+static int find_free_client(void)
 {
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
@@ -221,7 +235,7 @@ int find_free_client(void)
     return -1;
 }
 
-void clients_init(void)
+static void clients_init(void)
 {
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
@@ -229,7 +243,7 @@ void clients_init(void)
     }
 }
 
-void client_init(Client *c, int idx)
+static void client_init(Client *c, int idx)
 {
     memset(c, 0, sizeof(*c));
     c->socket = -1;
@@ -239,7 +253,7 @@ void client_init(Client *c, int idx)
     snprintf(c->username, USERNAME_MAX, "Client %d", idx);
 }
 
-void client_remove(Client *c)
+static void client_remove(Client *c)
 {
     if (!c)
         return;
@@ -250,31 +264,31 @@ void client_remove(Client *c)
     client_init(c, c->index);
 }
 
-void client_set_username(Client *c, const char *p, size_t len)
+static void client_set_username(Client *c, const char *p, size_t len)
 {
     memcpy(c->username, p, len);
     c->username[len] = '\0';
 }
 
-void broadcast_join(int room_id, Client *c)
+static void broadcast_join(int room_id, Client *c)
 {
     (void)room_id;
     (void)c;
-};
-void broadcast_leave(int room_id, Client *c)
+}
+static void broadcast_leave(int room_id, Client *c)
 {
     (void)room_id;
     (void)c;
-};
-void broadcast_quit(int room_id, Client *c)
+}
+static void broadcast_quit(int room_id, Client *c)
 {
     (void)room_id;
     (void)c;
-};
-void broadcast_room(int room_id, Client *sender, const char *msg, size_t len)
+}
+static void broadcast_room(int room_id, Client *sender, const char *msg, size_t len)
 {
     (void)room_id;
     (void)sender;
     (void)msg;
     (void)len;
-};
+}

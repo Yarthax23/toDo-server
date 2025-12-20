@@ -2,9 +2,10 @@
 #include "server.h" // Client
 
 #include <errno.h>
-#include <stdio.h>
 #include <stdlib.h> // EXIT
 #include <string.h> // mem*, str*
+
+#define MAX_ROOM_ID 63
 
 typedef struct
 {
@@ -149,7 +150,7 @@ static command_action handle_join(Client *c, const char *args, size_t args_len)
         goto error;
 
     // Out of range
-    if ((errno == ERANGE) || room < 0 || room > INT_MAX)
+    if ((errno == ERANGE) || room < 0 || room > MAX_ROOM_ID)
         goto error;
 
     // Same room
