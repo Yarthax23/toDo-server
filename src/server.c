@@ -169,16 +169,17 @@ void start_server(const char *socket_path)
                 {
                 case CMD_DISCONNECT:
                     if (action.room_id != -1)
-                        broadcast_leave(action.room_id, c);
+                        broadcast_quit(action.room_id, c);
                     client_remove(c);
                     goto next_client;
 
                 case CMD_SET_NICK:
-                    memcpy(c->username, action.payload, action.payload_len);
-                    c->username[action.payload_len] = '\0';
+                    client_set_username(c, action.payload, action.payload_len);
                     break;
 
                 case CMD_JOIN_ROOM:
+                    if (c->room_id != -1)
+                        broadcast_leave(c->room_id, c);
                     c->room_id = action.room_id;
                     broadcast_join(action.room_id, c);
                     break;
@@ -250,6 +251,12 @@ void client_remove(Client *c)
     client_init(c, c->index);
 }
 
+void client_set_username(Client *c, const char *p, size_t len)
+{
+    memcpy(c->username, p, len);
+    c->username[len] = '\0';
+}
+
 void broadcast_join(int room_id, Client *c)
 {
     (void)room_id;
@@ -260,14 +267,12 @@ void broadcast_leave(int room_id, Client *c)
     (void)room_id;
     (void)c;
 };
-void broadcast_room(int room_id, Client *sender, const char *msg, size_t len)
+void broadcast_quit(int room_id, Client *c)
 {
     (void)room_id;
-    (void)sender;
-    (void)msg;
-    (void)len;
+    (void)c;
 };
-void broadcast_msg(int room_id, Client *sender, const char *msg, size_t len)
+void broadcast_room(int room_id, Client *sender, const char *msg, size_t len)
 {
     (void)room_id;
     (void)sender;

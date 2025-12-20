@@ -30,7 +30,7 @@ void client_remove(Client *c);
 
 void broadcast_join(int room_id, Client *c);
 void broadcast_leave(int room_id, Client *c);
+void broadcast_quit(int room_id, Client *c);
 void broadcast_room(int room_id, Client *sender, const char *msg, size_t len);
-void broadcast_msg(int room_id, Client *sender, const char *msg, size_t len);
 
 #endif // SERVER_H
