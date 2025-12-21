@@ -21,7 +21,7 @@ static void client_init(Client *c, int idx);
 static void client_remove(Client *c);
 static void client_set_username(Client *c, const char *p, size_t len);
 
-static void broadcast_join(int room_id, Client *c);
+static int broadcast_join(int room_id, Client *c);
 static void broadcast_leave(int room_id, Client *c);
 static void broadcast_quit(int room_id, Client *c);
 static void broadcast_room(int room_id, Client *sender, const char *msg, size_t len);
@@ -38,10 +38,14 @@ void start_server(const char *socket_path)
     // Prepare address
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sun_family = AF_UNIX;
-    snprintf(server_addr.sun_path,
-             sizeof(server_addr.sun_path),
-             "%s",
-             socket_path);
+    int n = snprintf(server_addr.sun_path,
+                     sizeof(server_addr.sun_path),
+                     "%s",
+                     socket_path);
+
+    if (n < 0 || (size_t)n >= sizeof(server_addr.sun_path))
+        // fatal configuration error
+        exit(EXIT_FAILURE);
 
     // Remove stale socket file
     unlink(server_addr.sun_path);
@@ -128,22 +132,22 @@ void start_server(const char *socket_path)
             if (!FD_ISSET(c->socket, &readfds))
                 continue;
 
-            ssize_t n = recv(c->socket,
-                             c->inbuf + c->inbuf_len,
-                             INBUF_SIZE - c->inbuf_len,
-                             0);
+            ssize_t n_recv = recv(c->socket,
+                                  c->inbuf + c->inbuf_len,
+                                  INBUF_SIZE - c->inbuf_len,
+                                  0);
 
             // Client closed or error
-            if (n <= 0)
+            if (n_recv <= 0)
             {
-                if (n < 0)
+                if (n_recv < 0)
                     perror("recv");
                 client_remove(c);
                 continue;
             }
 
             // Handle client
-            c->inbuf_len += n;
+            c->inbuf_len += n_recv;
 
             // Overflow check
             if (c->inbuf_len == INBUF_SIZE)
@@ -194,7 +198,11 @@ void start_server(const char *socket_path)
                     if (c->room_id != -1)
                         broadcast_leave(c->room_id, c);
                     c->room_id = action.room_id;
-                    broadcast_join(action.room_id, c);
+                    if (broadcast_join(action.room_id, c) == -1)
+                    {
+                        perror("send");
+                        exit(EXIT_FAILURE);
+                    };
                     break;
 
                 case CMD_LEAVE_ROOM:
@@ -270,11 +278,29 @@ static void client_set_username(Client *c, const char *p, size_t len)
     c->username[len] = '\0';
 }
 
-static void broadcast_join(int room_id, Client *c)
+static int broadcast_join(int room_id, Client *c)
 {
-    (void)room_id;
-    (void)c;
+    // Format server message
+    const char event[] = "[server] JOIN";
+    char buf[sizeof(event) + USERNAME_MAX + 2]; // space + '\n'
+
+    int written = snprintf(buf, sizeof(buf), "%s %s\n", event, c->username);
+    if (written < 0 || (size_t)written >= sizeof(buf))
+        return -1;
+
+    // Broadcast
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (clients[i].socket != -1 &&          // closed socket
+            clients[i].socket != c->socket &&   // sender socket
+            clients[i].room_id == room_id)      // filter room
+
+            if (send(clients[i].socket, buf, (size_t)written, 0) == -1)
+                return -1;
+    }
+    return 0;
 }
+
 static void broadcast_leave(int room_id, Client *c)
 {
     (void)room_id;
