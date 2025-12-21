@@ -23,7 +23,7 @@ static void client_set_username(Client *c, const char *p, size_t len);
 
 static int broadcast_join(int room_id, Client *c);
 static int broadcast_leave(int room_id, Client *c);
-static void broadcast_quit(int room_id, Client *c);
+static int broadcast_quit(int room_id, Client *c);
 static void broadcast_room(int room_id, Client *sender, const char *msg, size_t len);
 
 void start_server(const char *socket_path)
@@ -186,7 +186,11 @@ void start_server(const char *socket_path)
                 {
                 case CMD_DISCONNECT:
                     if (action.room_id != -1)
-                        broadcast_quit(action.room_id, c);
+                        if (broadcast_quit(action.room_id, c) == -1)
+                        {
+                            perror("send: quit");
+                            exit(EXIT_FAILURE);
+                        }
                     client_remove(c);
                     goto next_client;
 
@@ -200,13 +204,13 @@ void start_server(const char *socket_path)
                         {
                             perror("send: leave");
                             exit(EXIT_FAILURE);
-                        };
+                        }
                     c->room_id = action.room_id;
                     if (broadcast_join(action.room_id, c) == -1)
                     {
                         perror("send: join");
                         exit(EXIT_FAILURE);
-                    };
+                    }
                     break;
 
                 case CMD_LEAVE_ROOM:
@@ -216,7 +220,7 @@ void start_server(const char *socket_path)
                         {
                             perror("send: leave");
                             exit(EXIT_FAILURE);
-                        };
+                        }
                     break;
 
                 case CMD_BROADCAST_MSG:
@@ -333,11 +337,29 @@ static int broadcast_leave(int room_id, Client *c)
     return 0;
 }
 
-static void broadcast_quit(int room_id, Client *c)
+static int broadcast_quit(int room_id, Client *c)
 {
-    (void)room_id;
-    (void)c;
+    // Format server message
+    const char event[] = "[server] QUIT";
+    char buf[sizeof(event) + USERNAME_MAX + 2]; // space + '\n'
+
+    int written = snprintf(buf, sizeof(buf), "%s %s\n", event, c->username);
+    if (written < 0 || (size_t)written >= sizeof(buf))
+        return -1;
+
+    // Broadcast
+    for (int i = 0; i < MAX_CLIENTS; i++)
+    {
+        if (clients[i].socket != -1 &&        // closed socket
+            clients[i].socket != c->socket && // echo sender
+            clients[i].room_id == room_id)    // filter room
+
+            if (send(clients[i].socket, buf, (size_t)written, 0) == -1)
+                return -1;
+    }
+    return 0;
 }
+
 static void broadcast_room(int room_id, Client *sender, const char *msg, size_t len)
 {
     (void)room_id;
