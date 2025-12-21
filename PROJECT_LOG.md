@@ -1,35 +1,52 @@
-## 2025-12-20 – Day Ten
+## 2025-12-20 – Initial Implementation Against Locked Spec
 ### Summary
 
-...
+Began implementation work against the finalized execution and protocol specification.
+The focus was on enforcing correct scope, ownership, and visibility so the server
+implementation accurately reflects the locked architecture.
+
+No protocol semantics or ordering guarantees were changed.
 
 ### Decisions
 
-* ...
+* Server-owned state uses file-scope `static` for explicit lifetime and ownership.
+* Grammar enforces a bounded room domain (`MAX_ROOM_ID`) as a protocol constraint.
+* Public headers expose only the true module API; internal helpers remain private.
 
 ### Added
 
-* ...
+* Bounded room domain validation in grammar.
+* File-local server state declarations.
 
 ### Changed
 
-* ...
+* Relocated incorrectly global variables to their proper scope.
+* Pruned `server.h` to remove internal helpers and unsafe macro definitions.
+* Renamed misleading or unsafe macros to domain-specific constants.
 
 ### Removed
 
-* ...
+* Public exposure of internal server helpers.
+* Redefinitions of standard or system macros.
+* Unused headers.
 
 ### Learnings
 
-* ...
+* `static` locals create hidden globals and obscure ownership.
+* Protocol bounds should reflect intent, not machine limits.
+* Header minimalism improves auditability and enforces layering.
+* Review `send` system call manual's page, error handling semantics.
 
 ### Next Steps
 
-* [] ...
+* [ ] Implement remaining `broadcast_*` helpers per locked contract.
+* [ ] Factor common event formatting into a helper.
+* [ ] Manual protocol testing (JOIN → MSG → LEAVE → QUIT).
 
 ### Notes
 
-* ...
+* Design phase remains closed.
+* All changes are implementation-only.
 
 
 ## 2025-12-19 – Execution Semantics Finalization & Protocol Lock-In
