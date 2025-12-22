@@ -145,21 +145,21 @@ Therefore, the protocol must define explicit framing.
 
 ### Layer 1: Framing strategy
 
-**Delimiter-based protocol (****`\n`****)**
+**Delimiter-based protocol (`\n`)**
 * Message delimiter: `\n`
 * Each client connection maintains an independent input buffer
 * Incoming data may be **fragmented** or **coalesced** arbitrarily by the transport
 * Messages are extracted and processed in FIFO order
 
 **Framing Invariants**
-* Parsing is strictly delimiter-driven; no data beyond the first delimiter is interpreted
-* New bytes are only appended at `inbuf + inbuf_len`
-* Complete messages are removed from the buffer after processing
-* Maximum message length: INBUF_SIZE - 1
+
+* Parsing is delimiter-driven (`\n`)
+* Bytes are appended only at `inbuf + inbuf_len`
+* Complete messages are processed FIFO and removed
+* Maximum message length: `INBUF_SIZE - 1`
 
 **Message Properties**
 * Message payload is treated as opaque bytes 
-* Meaning is assigned later by protocol command parsing
 * Messages may contain arbitrary bytes except the delimiter (`\n`) 
 * Embedded NUL bytes are permitted but may truncate debug output
 
@@ -168,10 +168,9 @@ Therefore, the protocol must define explicit framing.
 * If the byte immediately preceding `\n` is `\r`, it is stripped
 * This allows transparent handling of both LF and CRLF input
 
-**Error handling**
-* Buffer overflow (no limited within buffer capacity) → disconnect
-* `recv() == 0` (peer closed connection) → disconnect
-* Malformed command → disconnect
+**Disconnect Conditions**
+* Buffer overflow (no delimiter found within buffer capacity)
+* `recv() == 0` (peer closed connection)
 
 Benefits:
 
@@ -192,38 +191,19 @@ These are intentionally deferred until a clear need arises.
 
 ### Layer 2: Grammar & Command Parsing
 
-**Message model**
-* Each message is a single framed line, terminated by `\n`
-* Framing guarantees:
-    * No embedded `\n`
-    * Length ≤ INBUF_SIZE - 1
-* Grammar operates on raw bytes
-* Commands are ASCII-sensitive
-* Parsing is byte-oriented, not locale-aware
-    * No automatic detection of a client's language and country settings is issued
+Each framed line is parsed as a single command.
 
-**General syntax**
-* `<command> [<arg> ...]`
-* Fields are separated by single spaces (`0x20`)
-* No quoting or escaping
-* Trailing spaces are invalid
-* Empty lines are invalid
-
-**Responsibilities**
+**Grammar responsibilities**
 * Validate syntax and arguments
-* Interpret semantics
+* Interpret command semantics
 * Emit intent (`command_action`)
 * Signal disconnect on error
 
 **Characteristics**
-* Read-only over message bytes
+* Pure and read-only over input bytes
 * No buffer mutation
 * No I/O
-* No memory ownership
-* No delimiter handling
-
-Trying to "reuse" framing extraction logic for grammar parsing would blur layers and introduce bugs.
-Grammar is pure: it performs validation and intent construction only.
+* No state ownership
 
 #### Commands
 ##### NICK
@@ -233,14 +213,13 @@ Grammar is pure: it performs validation and intent construction only.
 * Rules
     * `<username>` is opaque bytes
     * Length: `1..USERNAME_MAX-1`
-    * Must no contain spaces
+    * Must not contain spaces
     * May be reassigned at any time
 * Effects
-    * Grammar emits intent to change username
-    * Server applies username mutation
+    * Set or change the client's username
     * No room membership changes
     * No broadcasts
-* Errors → disconnect
+* Errors
     * Missing argument
     * Argument too long
     * Argument contains spaces
@@ -250,15 +229,13 @@ Grammar is pure: it performs validation and intent construction only.
     `JOIN <room_id>`
 * Rules
     * `<room_id>` parsed using `strtol`
-    * Valid range: implementation-defined (`0..INT_MAX`)
+    * Valid range: `0..MAX_ROOM_ID` (protocol-defined bound)
     * No extra arguments
 * Effects
-    * Grammar emits intent to join `<room_id>`
-    * Server execution:
-        * If already in a room: emit LEAVE to old room
-        * Set `clients.room_id` to `<room_id>`
-        * Emit JOIN to destination room
-* Errors → disconnect
+    * If already in a room: emit LEAVE to old room
+    * Set `client.room_id` to `<room_id>`
+    * Emit JOIN to destination room
+* Errors
     * Missing argument
     * Non-numeric argument
     * Overflow or underflow
@@ -269,11 +246,9 @@ Grammar is pure: it performs validation and intent construction only.
 * Rules
     * No arguments allowed
 * Effects
-    * Grammar emits intent to leave current room
-    * Server execution:
-        * Emit LEAVE to current room
-        * Set `client.room_id = -1`
-* Errors → disconnect
+    * Emit LEAVE to current room
+    * Set `client.room_id = -1`
+* Errors
     * Extra arguments
 ##### MSG
 * Declare intent to send a message to the current room.
@@ -286,11 +261,9 @@ Grammar is pure: it performs validation and intent construction only.
     * Empty payload is allowed
     * Payload begins after the first space
 * Effects
-    * Grammar emits intent to broadcast payload
-    * Server execution:
-        * Broadcasts payload to all clients in sender's room
-        * Sender echo behavior is implementation-defined but consistent
-* Errors → disconnect
+    * Broadcasts payload to all clients in sender's room
+    * Sender echo behavior is implementation-defined but consistent
+* Errors
     * Client is not in a room
     * Missing payload (no space after `MSG`)
 ##### QUIT
@@ -300,27 +273,21 @@ Grammar is pure: it performs validation and intent construction only.
 * Rules
     * No arguments allowed
 * Effects
-    * Grammar emits intent to disconnect
-    * Server execution:
-        * If in a room: emit QUIT to that room
-        * Remove client via `client_remove`
-        * Close socket
-* Errors → disconnect
+    * If in a room: emit QUIT to that room
+    * Remove client via `client_remove`
+    * Close socket
+* Errors
     * Extra arguments
 ---
 **Error Policy**
 
-* Any grammar violation → immediate disconnect
-    * No error responses
-    * No partial recovery
-    * No warnings
+Any protocol violation results in immediate disconnect.
+There are no error replies, partial recovery, or warnings.
 
-This keeps:
-* State simple
-* Testing deterministic
-* Failure modes obvious
 
-**Parsing Strategy (Implementation Notes)**
+This keeps state simple, testing deterministic and failure modes obvious.
+
+**Parsing Strategy (Non-Normative Implementation Notes)**
 
 * Use `memchr` to find first space
 * Compare command using `memcmp`
@@ -362,7 +329,7 @@ Server events are messages authored by the server to announce changes in system 
 These messages are protocol-defined output, not debug or logging output.
 
 ##### JOIN
-* Emited when a client becomes a member of a room.
+* Emitted when a client becomes a member of a room.
 
     `[server] JOIN <username>`
 
@@ -380,7 +347,7 @@ These messages are protocol-defined output, not debug or logging output.
     * Not delivered to the leaving client
 
 ##### QUIT
-* Emited when a client disconnects.
+* Emitted when a client disconnects.
 
     `[server] QUIT <username>`
 
@@ -402,7 +369,6 @@ The server does not inspect, modify, or interpret payload bytes.
 ---
 
 #### Execution Invariant
-* Grammar emits intent only
 * Server owns all state mutation
 * Server determines broadcast scope and ordering
 * Helpers format and fan out messages only
@@ -411,21 +377,21 @@ The server does not inspect, modify, or interpret payload bytes.
 `command_action` does not mirror `Client`, it carries just enough information for the server to execute intent safely and in order.
 
 #### Grammar Constraints
+
 **Grammar MAY**
 * Parse input bytes
 * Validate syntax and arguments
 * Construct `command_action`
-* Reject malformed input
 
 **Grammar MUST NOT**
 * Mutate `Client`
-* Change room membership
-* Change username
+* Change username or room membership
 * Perform I/O
-* Broadcast
-* Close Sockets
+* Broadcast messages
+* Close sockets
 * Remove clients
-* Touch buffers
+* Modify buffers
+
 
 #### Broadcast Helpers
 * Perform formatting and fan-out only
