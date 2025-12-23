@@ -1,35 +1,48 @@
-## 2025-12-22 – Day Twelve
+## 2025-12-22 – Baseline Validation
 ### Summary
 
-...
+Completed a readability-focused refactor of server broadcast logic.
+Formatting and fan-out responsibilities are now centralized, without
+changing protocol semantics or execution ordering.
+
+Formalized deferred validation work by documenting manual multi-client
+testing and auditing execution ordering for all core commands.
+
+The v0.1.x protocol, execution semantics, and broadcast invariants are
+now considered validated. Future work will be additive or explicitly
+divergent from this baseline.
 
 ### Decisions
 
-* ...
+* Deferred exploratory and post-v0.1.x items (epoll, signal handling, targeted tests) to NOTES.md and future work.
+* Declared v0.1.x as a validated semantic baseline.
 
 ### Added
 
-* ...
+* Introduced `broadcast_to_room`, a lower-level delivery helper to centralize fan-out.
+* Documentation for manual multi-client protocol testing, including real multi-client scenarios and screenshots.
+* Documentation auditing execution ordering between grammar, server intent handling, and broadcast delivery.
 
 ### Changed
 
-* ...
-
-### Removed
-
-* ...
+* Refactored server event helpers to use `broadcast_event`.
+* Renamed `broadcast_room` to `broadcast_room_msg` for semantic clarity.
+* Clarified blocking I/O model and validation status in architecture documentation.
 
 ### Learnings
 
-* ...
+* Separating formatting, fan-out, and execution ordering clarifies invariants and simplifies auditing.
+* Manual multi-client testing provides strong validation when aligned with explicit architectural constraints.
+* Declaring a semantic baseline reduces cognitive load for future extensions.
 
 ### Next Steps
 
-* [] ...
+* Design minigame protocol extensions on top of the validated v0.1.x baseline.
+* Define a protocol evolution / versioning strategy for additive features.
 
 ### Notes
 
-* ...
+* Detailed step-by-step execution traces are deferred until command interactions become non-trivial (e.g., minigames).
 
 
 ## 2025-12-21 – Broadcast Surface Completed
@@ -43,22 +56,16 @@ and to distinguish server events from room messages.
 
 No protocol semantics or ordering guarantees were changed.
 
----
-
 ### Added
 
 * `broadcast_leave`, `broadcast_quit`, and `broadcast_room` helpers.
 * Execution-layer room message fan-out.
 * Minimal end-to-end data flow diagram (`recv → … → send`).
 
----
-
 ### Changed
 
 * Clarified documentation separation between server events and room messages.
 * Tightened execution ownership of delivery timing and scope.
-
----
 
 ### Learnings
 
@@ -66,13 +73,11 @@ No protocol semantics or ordering guarantees were changed.
 * Delivery belongs in execution, not protocol definition.
 * Duplication is acceptable until verification is complete.
 
----
-
 ### Next Steps
 
-* [ ] Audit execution ordering for JOIN / MSG / LEAVE / QUIT.
-* [ ] Manual multi-client protocol testing.
-* [ ] Optional helper refactor (no behavior changes).
+* [x] Audit execution ordering for JOIN / MSG / LEAVE / QUIT.
+* [x] Manual multi-client protocol testing.
+* [x] Optional helper refactor (no behavior changes).
 
 
 ## 2025-12-20 – Initial Implementation Against Locked Spec
@@ -116,9 +121,9 @@ No protocol semantics or ordering guarantees were changed.
 
 ### Next Steps
 
-* [ ] Implement remaining `broadcast_*` helpers per locked contract.
-* [ ] Factor common event formatting into a helper.
-* [ ] Manual protocol testing (JOIN → MSG → LEAVE → QUIT).
+* [x] Implement remaining `broadcast_*` helpers per locked contract.
+* [x] Factor common event formatting into a helper.
+* [x] Manual protocol testing (JOIN → MSG → LEAVE → QUIT).
 
 ### Notes
 
@@ -244,9 +249,9 @@ Grammar is now purely declarative, while the server is authoritative over state 
 
 ### Next steps
 
-* [ ] Decide which server-generated messages are part of the protocol surface
-* [ ] Specify join / leave notification semantics (wording, scope, ordering)
-* [ ] Implement once semantics are finalized
+* [x] Decide which server-generated messages are part of the protocol surface
+* [x] Specify join / leave notification semantics (wording, scope, ordering)
+* [x] Implement once semantics are finalized
 
 ### Notes
 
@@ -348,8 +353,7 @@ Implemented the first protocol command (`NICK`) following the previously defined
 ### Next steps
 
 * [x] Implement remaining protocol commands (`JOIN`, `LEAVE`, `MSG`, `QUIT`)
-* [ ] Add basic server-generated messages (join/leave notifications)
-* [ ] Expand manual protocol testing for all commands
+* [x] Expand manual protocol testing for all commands
 
 ### Notes
 
@@ -400,7 +404,7 @@ No implementation was started today; the focus was on architectural clarity and 
 ### Next steps
 
 * [x] Implement `handle_command()` with strict validation and explicit disconnect paths.
-* [ ] Add basic server-generated messages (join/leave notifications).
+* [x] Add basic server-generated messages (join/leave notifications).
 * [ ] Write targeted tests using `nc`/`socat` for each command and failure mode.
 
 ### Notes
@@ -442,7 +446,7 @@ Implemented and validated newline-delimited stream framing for the UNIX socket s
 
 * [x] Define command grammar and semantics on top of the line-based protocol.
 * [x] Implement command dispatch (handle_command) with explicit validation rules.
-* [ ] Decide on blocking model boundaries (what remains blocking, what may change later).
+* [x] Decide on blocking model boundaries (what remains blocking, what may change later).
 * [ ] Introduce server-generated messages (server full, client disconnect).
 * [x] Begin documenting protocol commands and error responses.
 
@@ -522,7 +526,7 @@ Implemented a single‑process AF_UNIX stream server with safe static initializa
 
 ### **Next steps**
 
-* [ ] Review blocking vs. non-blocking sockets behavior.
+* [x] Review blocking vs. non-blocking sockets behavior.
 * [x] Define buffer sizing and message parsing strategy.
 * [ ] Continue studying I/O multiplexing and concurrency models.
 * [x] Prepare for protocol framing (deilimer-based).
@@ -585,7 +589,7 @@ Set up the initial server module with start_server(), integrated it in main.c, u
 * [x] Explore select() for handling multiple clients concurrently.
 * [x] Implement basic client handling using select().
 * [ ] Research sigaction() for proper signal handling in fork() (if needed in future).
-* [ ] Begin implementing broadcast_message() function.
+* [x] Begin implementing broadcast_message() function.
 
 ### **Notes**
 
